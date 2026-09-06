@@ -68,6 +68,12 @@
     .field label{display:block;font-size:10px;color:#d1dfeb;text-transform:uppercase;margin-bottom:4px}
     .field input,.field select{width:100%;font-family:"Courier New",monospace;border:3px solid var(--dark);border-radius:8px;padding:8px;background:#fff;color:#111;font-weight:bold}
     .price-effect{background:#dfeaf4;border:2px dashed var(--line);border-radius:8px;padding:8px;font-size:11px;color:#294763;line-height:1.35}
+    .feedback-toast{position:fixed;right:18px;top:18px;z-index:50;min-width:280px;max-width:420px;padding:13px 15px;border:3px solid #172a3a;border-radius:10px;box-shadow:0 5px 0 #172a3a;font-weight:bold;line-height:1.35;display:none}
+    .feedback-toast.show{display:block;animation:toastIn .18s ease-out}
+    .feedback-toast.good{background:#d9f3df;color:#163b22}
+    .feedback-toast.bad{background:#ffd9d9;color:#5b1717}
+    .feedback-toast.warn{background:#eceff2;color:#243746}
+    @keyframes toastIn{from{transform:translateY(-8px);opacity:0}to{transform:translateY(0);opacity:1}}
     @media(max-width:1180px){.hud{grid-template-columns:repeat(3,1fr)}.management-row{grid-template-columns:1fr}.report-grid,.upgrade-grid,.history-grid,.stock-buy-grid{grid-template-columns:repeat(2,1fr)}.subtitle{display:none}}
     @media(max-width:760px){.top-row,.bottom-row,.production-grid,.counter-grid,.customers-wrap,.config-bar{grid-template-columns:1fr}}
     @media(max-width:620px){.hud{grid-template-columns:repeat(2,1fr)}.report-grid,.upgrade-grid,.history-grid,.stock-buy-grid,.stock-grid{grid-template-columns:1fr}.btn-row button{flex-basis:100%}.customer{width:88px}.screen{padding:8px}}
@@ -75,6 +81,7 @@
   </style>
 </head>
 <body>
+<div id="feedbackToast" class="feedback-toast" role="status" aria-live="polite"></div>
 <div class="screen">
   <div class="titlebar">
     <h1>🥟 Pastelaria em Operação</h1>
@@ -705,11 +712,16 @@
     ];
     $("upgradeGrid").innerHTML=ups.map(u=>`<div class="upgrade"><h3>${u.title}</h3><p>${u.desc}</p><div class="label">Saldo</div><div class="value">${u.cost ? (state.cash>=u.cost ? "Disponível" : "Insuficiente") : "conforme estoque"}</div><div class="tiny">${u.cost?`Valor: ${fmtMoney(u.cost)}`:""}</div><button ${u.disabled|| (u.cost && state.cash<u.cost) ? "disabled":""} onclick="window.__pastelaria.${u.fn}()">${u.disabled?"Já aplicado":(u.cost && state.cash<u.cost?"Saldo insuficiente":"Selecionar")}</button></div>`).join("");
   }
+  let feedbackTimer=null;
+  function showFeedback(message,type="warn"){
+    const el=$("feedbackToast"); if(!el) return; clearTimeout(feedbackTimer); el.textContent=message; el.className=`feedback-toast ${type} show`; feedbackTimer=setTimeout(()=>{el.className="feedback-toast";},3200);
+  }
+  function confirmInvestment(message){ showFeedback(`✓ ${message}`,"good"); }
   function spend(amount){ if(state.cash<amount){log(`Caixa insuficiente. Faltam ${fmtMoney(amount-state.cash)}.`,"bad"); return false} state.cash-=amount; state.pendingInvestment+=amount; return true }
   function requireManagerPassword(action="investimento operacional"){
     const typed = window.prompt(`Autorização gerencial necessária para ${action}. Digite a senha:`);
-    if(typed===null){ log("Investimento cancelado: autorização gerencial não informada.","warn"); return false; }
-    if(String(typed).trim()!=="4321"){ log("Investimento bloqueado: senha gerencial incorreta.","bad"); return false; }
+    if(typed===null){ log("Investimento cancelado: autorização gerencial não informada.","warn"); showFeedback("Autorização cancelada. Nenhum investimento foi realizado.","warn"); return false; }
+    if(String(typed).trim()!=="4321"){ log("Investimento bloqueado: senha gerencial incorreta.","bad"); showFeedback("Senha incorreta. O investimento não foi realizado.","bad"); return false; }
     log("Autorização gerencial concedida para investimento operacional.","good");
     return true;
   }
@@ -725,13 +737,13 @@
     const saldo = total>0 && state.cash>=total ? "disponível" : (qty>0 ? "insuficiente" : "—");
     box.innerHTML=`Total da compra: <b>${fmtMoney(total)}</b><br>Saldo: <b>${saldo}</b>${alert?`<br><span class="tag warn">${alert}</span>`:""}`;
   }
-  function buyFryer(){ if(state.fryerCapacity>=8) return; if(!requireManagerPassword("ampliar a capacidade da fritadeira")) return; if(!spend(COSTS.fryer)) return; state.fryerCapacity++; setupFryers(); log("Capacidade da fritadeira ampliada em +1 espaço.","good"); buildUpgrades(); render() }
-  function hireEmployee(){ if(state.employees>=4) return; if(!requireManagerPassword("contratar funcionário")) return; if(!spend(COSTS.employeeHire)) return; state.employees++; log(`Funcionário contratado por ${fmtMoney(COSTS.employeeHire)}. Equipe atual: ${state.employees}/4.`,"good"); buildUpgrades(); render() }
-  function hireDeliveryAssistant(){ if((state.deliveryAssistants||0)>=2) return; if(!requireManagerPassword("contratar ajudante de entrega")) return; if(!spend(COSTS.deliveryAssistantHire)) return; state.deliveryAssistants=(state.deliveryAssistants||0)+1; log(`Ajudante de entrega contratado por ${fmtMoney(COSTS.deliveryAssistantHire)}. Ajudantes: ${state.deliveryAssistants}/2.`,"good"); buildUpgrades(); render() }
-  function trainTeam(){ if(state.trained) return; if(!requireManagerPassword("treinar equipe")) return; if(!spend(COSTS.training)) return; state.trained=true; log("Equipe treinada.","good"); buildUpgrades(); render() }
+  function buyFryer(){ if(state.fryerCapacity>=8) return; if(!requireManagerPassword("ampliar a capacidade da fritadeira")) return; if(!spend(COSTS.fryer)) return; state.fryerCapacity++; setupFryers(); log("Capacidade da fritadeira ampliada em +1 espaço.","good"); confirmInvestment("Investimento realizado: capacidade da fritadeira ampliada em +1 espaço."); buildUpgrades(); render() }
+  function hireEmployee(){ if(state.employees>=4) return; if(!requireManagerPassword("contratar funcionário")) return; if(!spend(COSTS.employeeHire)) return; state.employees++; log(`Funcionário contratado por ${fmtMoney(COSTS.employeeHire)}. Equipe atual: ${state.employees}/4.`,"good"); confirmInvestment(`Investimento realizado: funcionário contratado. Equipe atual: ${state.employees}/4.`); buildUpgrades(); render() }
+  function hireDeliveryAssistant(){ if((state.deliveryAssistants||0)>=2) return; if(!requireManagerPassword("contratar ajudante de entrega")) return; if(!spend(COSTS.deliveryAssistantHire)) return; state.deliveryAssistants=(state.deliveryAssistants||0)+1; log(`Ajudante de entrega contratado por ${fmtMoney(COSTS.deliveryAssistantHire)}. Ajudantes: ${state.deliveryAssistants}/2.`,"good"); confirmInvestment(`Investimento realizado: ajudante de entrega contratado. Ajudantes: ${state.deliveryAssistants}/2.`); buildUpgrades(); render() }
+  function trainTeam(){ if(state.trained) return; if(!requireManagerPassword("treinar equipe")) return; if(!spend(COSTS.training)) return; state.trained=true; log("Equipe treinada.","good"); confirmInvestment("Investimento realizado: equipe treinada."); buildUpgrades(); render() }
   function improveLayout(){ if(state.layoutImproved) return; if(!spend(COSTS.layout)) return; state.layoutImproved=true; log("Layout melhorado. Fluxo do balcão mais organizado.","good"); buildUpgrades(); render() }
-  function expandStorage(){ if(!requireManagerPassword("ampliar a capacidade de estoque")) return; if(!spend(COSTS.storage)) return; Object.keys(state.capacity).forEach(k=>{state.capacity[k]+=Math.max(1,Math.ceil(INITIAL_CAPACITY[k]*.20))}); log("Capacidade de estoque ampliada em 20%.","good"); buildPurchases(); buildUpgrades(); render() }
-  function advertise(){ if(!requireManagerPassword("realizar divulgação")) return; if(!spend(40)) return; state.pendingDemandBoost=true; log("Divulgação comprada. Próximo ciclo terá demanda maior.","warn"); buildUpgrades(); render() }
+  function expandStorage(){ if(!requireManagerPassword("ampliar a capacidade de estoque")) return; if(!spend(COSTS.storage)) return; Object.keys(state.capacity).forEach(k=>{state.capacity[k]+=Math.max(1,Math.ceil(INITIAL_CAPACITY[k]*.20))}); log("Capacidade de estoque ampliada em 20%.","good"); confirmInvestment("Investimento realizado: capacidade de estoque ampliada em 20%."); buildPurchases(); buildUpgrades(); render() }
+  function advertise(){ if(!requireManagerPassword("realizar divulgação")) return; if(!spend(40)) return; state.pendingDemandBoost=true; log("Divulgação comprada. Próximo ciclo terá demanda maior.","warn"); confirmInvestment("Investimento realizado: divulgação contratada para o próximo dia."); buildUpgrades(); render() }
   function buyStock(key){
     const input=$("qty-"+key); let qty=clamp(parseInt(input.value||"0",10),0,state.capacity[key]-state.stock[key]); if(qty<=0){log("Informe uma quantidade válida dentro da capacidade do estoque.","warn"); return}
     const amount=qty*COSTS[key]; if(amount>state.cash){log("Caixa insuficiente para a quantidade escolhida.","bad"); return} if(!spend(amount)) return; state.stock[key]+=qty; log(`Compra realizada: +${qty} ${STOCK_NAMES[key].toLowerCase()} por ${fmtMoney(amount)}.`,"good"); buildPurchases(); buildUpgrades(); render();
@@ -808,5 +820,5 @@
 </html>
 
 <style>
-.card .label{color:#d1dfeb}.card .value{color:#fff}.cash-card .label,.cash-card .value{color:#fff}.report-item .label,.history-item .label{color:#4b667d}.report-item .value,.history-item .value{color:#17324b}.stock-item .label{color:#4b667d}.stock-item .value,.stock-item .stock-numbers{color:#17324b}.config-bar.panel{background:#274867}.panel .tiny{color:#c7d7e4}.planningPanel{}
+.card .label{color:#d1dfeb}.card .value{color:#fff}.cash-card .label,.cash-card .value{color:#fff}.report-item .label,.history-item .label{color:#4b667d}.report-item .value,.history-item .value{color:#17324b}.stock-item .label{color:#4b667d}.stock-item .value,.stock-item .stock-numbers{color:#17324b}.config-bar.panel{background:#56636e;border-color:#1b2d3b}.config-bar.panel .field label,.config-bar.panel .price-effect{color:#f2f4f6}#planningPanel{background:#394d60}#planningPanel .config-bar{background:#5b6670;border:2px solid #263847;border-radius:9px;padding:9px}#planningPanel .field label{color:#eef2f5}#planningPanel .field .value{color:#ffffff}.panel .tiny{color:#c7d7e4}.planningPanel{}
 </style>
