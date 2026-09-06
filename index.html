@@ -68,6 +68,7 @@
     .field label{display:block;font-size:10px;color:#d1dfeb;text-transform:uppercase;margin-bottom:4px}
     .field input,.field select{width:100%;font-family:"Courier New",monospace;border:3px solid var(--dark);border-radius:8px;padding:8px;background:#fff;color:#111;font-weight:bold}
     .price-effect{background:#dfeaf4;border:2px dashed var(--line);border-radius:8px;padding:8px;font-size:11px;color:#294763;line-height:1.35}
+    #priceEffectText{color:#000!important}
     .feedback-toast{position:fixed;right:18px;top:18px;z-index:50;min-width:280px;max-width:420px;padding:13px 15px;border:3px solid #172a3a;border-radius:10px;box-shadow:0 5px 0 #172a3a;font-weight:bold;line-height:1.35;display:none}
     .feedback-toast.show{display:block;animation:toastIn .18s ease-out}
     .feedback-toast.good{background:#d9f3df;color:#163b22}
@@ -116,6 +117,7 @@
   </section>
   <div class="btn-row">
     <button id="startBtn" class="btn-primary">▶ Iniciar dia de operação</button>
+    <button id="pauseBtn" class="btn-blue" disabled>⏸ Pausar</button>
     <button id="endBtn" class="btn-warn" disabled>■ Encerrar dia e ver relatório</button>
     <button id="historyBtn" class="btn-blue">📊 Histórico</button>
   </div>
@@ -317,7 +319,7 @@
     const existingName = $("shopNameInput") ? $("shopNameInput").value : "Pastelaria do Vale";
     const existingPrice = $("pastelPriceInput") ? $("pastelPriceInput").value : 10;
     const existingDrinkPrice = $("drinkPriceInput") ? $("drinkPriceInput").value : 6;
-    state = {running:false,cycle:1,remaining:CYCLE_SECONDS,cash:500,satisfaction:100,employees:2,fryers:1,fryerCapacity:4,deliveryAssistants:0,trained:false,pendingInvestment:0,shopName:(String(existingName||"").trim()||"Pastelaria do Vale").slice(0,40),pastelPrice:normalizePrice(existingPrice),drinkPrice:normalizeDrinkPrice(existingDrinkPrice),performanceFocus:($("performanceFocusInput")?$("performanceFocusInput").value:"custo"),stock:copy(INITIAL_CAPACITY),reserved:zeroStock(),capacity:copy(INITIAL_CAPACITY),activeCustomer:null,customerQueue:[],deliveryCustomers:[],ticketQueue:[],fryerSlots:[],readyOrders:[],history:[],simulatedHistory:generatePriorHistory(),logs:[],stats:freshStats(),nextCustomerId:1,nextOrderNo:1,nextTicketId:1,nextSpawnIn:0,assistantCounter:0,expensiveCustomerSpawned:false,weekScale:(0.92+Math.random()*.16),eventDemandMult:1,eventSpeedFactor:1,demand:{min:9,max:16,patience:1}};
+    state = {running:false,paused:false,cycle:1,remaining:CYCLE_SECONDS,cash:500,satisfaction:100,employees:2,fryers:1,fryerCapacity:4,deliveryAssistants:0,trained:false,pendingInvestment:0,shopName:(String(existingName||"").trim()||"Pastelaria do Vale").slice(0,40),pastelPrice:normalizePrice(existingPrice),drinkPrice:normalizeDrinkPrice(existingDrinkPrice),performanceFocus:($("performanceFocusInput")?$("performanceFocusInput").value:"custo"),stock:copy(INITIAL_CAPACITY),reserved:zeroStock(),capacity:copy(INITIAL_CAPACITY),activeCustomer:null,customerQueue:[],deliveryCustomers:[],ticketQueue:[],fryerSlots:[],readyOrders:[],history:[],simulatedHistory:generatePriorHistory(),logs:[],stats:freshStats(),nextCustomerId:1,nextOrderNo:1,nextTicketId:1,nextSpawnIn:0,assistantCounter:0,expensiveCustomerSpawned:false,weekScale:(0.92+Math.random()*.16),eventDemandMult:1,eventSpeedFactor:1,demand:{min:9,max:16,patience:1}};
     syncPastelPrices(); updatePriceTexts(); selectedPastel=null; selectedDrink=false; selectedReadyId=null; setupFryers(); log("Jogo reiniciado. Consulte o histórico, calcule a previsão e inicie a segunda-feira.","warn"); closeModals(); render();
   }
   function setupFryers(){state.fryerSlots=[]; for(let i=0;i<state.fryerCapacity;i++) state.fryerSlots.push(null)}
@@ -346,7 +348,7 @@
     if($("pastelPriceInput")) setPastelPrice($("pastelPriceInput").value);
     if($("drinkPriceInput")) setDrinkPrice($("drinkPriceInput").value);
     if($("performanceFocusInput")) setPerformanceFocus($("performanceFocusInput").value);
-    state.running=true; state.remaining=CYCLE_SECONDS; state.activeCustomer=null; state.customerQueue=[]; state.deliveryCustomers=[]; state.ticketQueue=[]; state.readyOrders=[]; selectedReadyId=null; setupFryers();
+    state.running=true; state.paused=false; state.remaining=CYCLE_SECONDS; state.activeCustomer=null; state.customerQueue=[]; state.deliveryCustomers=[]; state.ticketQueue=[]; state.readyOrders=[]; selectedReadyId=null; setupFryers();
     state.expensiveCustomerSpawned=false; state.stats=freshStats(); state.stats.stockStart=copy(state.stock); state.stats.capacityStart=copy(state.capacity); state.stats.performanceFocus=state.performanceFocus; state.stats.cycleInvestment=state.pendingInvestment; state.stats.forecast=Math.round(forecast); state.pendingInvestment=0; state.assistantCounter=0;
     chooseCycleEvent(); state.nextSpawnIn=0;
     const profile=priceProfile();
@@ -357,7 +359,7 @@
     cycleTimer=setInterval(gameTick,1000); renderTimer=setInterval(render,350); render();
   }
   function gameTick(){
-    if(!state.running) return;
+    if(!state.running || state.paused) return;
     state.remaining--;
     if(state.remaining>0){ maybeSpawnCustomer(); updateFryers(); updatePatience(); updateBottleneck(); }
     if(state.remaining===240) log("Faixa de maior movimento do dia: as chegadas se intensificaram.","warn");
@@ -501,7 +503,7 @@
   function variableCostFor(order){ return COSTS.massa + COSTS[order.pastel] + COSTS.embalagem + (order.drink?COSTS.bebida:0) }
   function endCycle(){
     if(!state.running) return;
-    state.running=false; clearInterval(cycleTimer); clearInterval(renderTimer); $("startBtn").disabled=false; $("endBtn").disabled=true;
+    state.running=false; state.paused=false; clearInterval(cycleTimer); clearInterval(renderTimer); $("startBtn").disabled=false; $("endBtn").disabled=true;
     const uniquePending=new Set(); if(state.activeCustomer) uniquePending.add(state.activeCustomer.id); state.customerQueue.forEach(c=>uniquePending.add(c.id)); state.deliveryCustomers.forEach(c=>uniquePending.add(c.id));
     state.stats.lost += uniquePending.size; if(uniquePending.size) state.satisfaction=clamp(state.satisfaction-uniquePending.size*6,0,100);
     state.deliveryCustomers.slice().forEach(c=>removeCustomerOrders(c.id,true));
@@ -762,7 +764,15 @@
   function closeModals(){ $("reportModal").classList.remove("show"); $("historyModal").classList.remove("show") }
   function log(msg,type=""){ const cls=type?`log-${type}`:""; state.logs.unshift({msg,cls,time:new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit",second:"2-digit"})}); state.logs=state.logs.slice(0,80) }
   function render(){ renderHud(); renderCustomers(); renderDeliveryCustomers(); renderMachineDisplay(); updateMachineButtons(); renderTickets(); renderFryers(); renderReadyOrders(); renderStock(); renderLog(); }
-  function renderHud(){ $("cycleValue").textContent=`${DAY_SHORT[dayIndex()]} • S${weekNumber()}`; if($("planningDay")) $("planningDay").textContent=`${currentDayName()} — Semana ${weekNumber()}`; $("timerValue").textContent=`${String(Math.floor(state.remaining/60)).padStart(2,"0")}:${String(state.remaining%60).padStart(2,"0")}`; if($("startBtn")) $("startBtn").textContent=`▶ Iniciar ${currentDayName()}`; $("cashValue").textContent=fmtMoney(state.cash); $("satisfactionValue").textContent=`${Math.round(state.satisfaction)}/100`; $("employeesValue").textContent=`${state.employees}/4${state.trained?" ⭐":""}`; $("assistantValue").textContent=(state.deliveryAssistants||0)+"/2"; $("fryersValue").textContent=`${state.fryerCapacity} espaços`; $("servedValue").textContent=state.stats.served; $("lostValue").textContent=state.stats.lost; }
+  function togglePause(){
+    if(!state.running) return;
+    state.paused=!state.paused;
+    log(state.paused?"Jogo pausado. O tempo e a operação estão congelados.":"Jogo retomado.", state.paused?"warn":"good");
+    showFeedback(state.paused?"Jogo pausado.":"Jogo retomado.", state.paused?"warn":"good");
+    render();
+  }
+
+  function renderHud(){ $("cycleValue").textContent=`${DAY_SHORT[dayIndex()]} • S${weekNumber()}`; if($("planningDay")) $("planningDay").textContent=`${currentDayName()} — Semana ${weekNumber()}`; $("timerValue").textContent=`${String(Math.floor(state.remaining/60)).padStart(2,"0")}:${String(state.remaining%60).padStart(2,"0")}`; if($("startBtn")){ $("startBtn").textContent=`▶ Iniciar ${currentDayName()}`; $("startBtn").disabled=!!state.running; } if($("pauseBtn")){ $("pauseBtn").disabled=!state.running; $("pauseBtn").textContent=state.paused?"▶ Continuar":"⏸ Pausar"; } $("cashValue").textContent=fmtMoney(state.cash); $("satisfactionValue").textContent=`${Math.round(state.satisfaction)}/100`; $("employeesValue").textContent=`${state.employees}/4${state.trained?" ⭐":""}`; $("assistantValue").textContent=(state.deliveryAssistants||0)+"/2"; $("fryersValue").textContent=`${state.fryerCapacity} espaços`; $("servedValue").textContent=state.stats.served; $("lostValue").textContent=state.stats.lost; }
   function customerHTML(c,showOrder=true,drop=false){ if(!c) return `<div class="tiny">Aguardando cliente...</div>`; const pct=patiencePct(c); const mood=pct<25?"😡":pct<50?"😟":c.mood; const pCls=pct<25?"bad":pct<50?"warn":""; return `<div class="customer ${drop?"dropzone":""}" data-customer-id="${c.id}">${showOrder?`<div class="bubble">#${pad(c.orderNo)}<br>${orderText(c.order)}</div>`:`<div class="bubble">#${pad(c.orderNo)}<br>${c.color.toUpperCase()}</div>`}<div class="sprite"><div class="hair"></div><div class="head"></div><div class="body shirt-${c.color}"></div><div class="legs"></div></div><div class="mood">${mood}</div><div class="customer-name">${c.color}</div><div class="patience ${pCls}"><span style="height:${pct}%"></span></div></div>` }
   function patiencePct(c){ return clamp(100-((Date.now()-c.bornAt)/1000)/c.patience*100,0,100) }
   function renderCustomers(){ $("activeCustomer").innerHTML=customerHTML(state.activeCustomer,true,false); $("customerQueue").innerHTML=state.customerQueue.map(c=>customerHTML(c,true,false)).join("")||`<div class="tiny">Sem fila no momento.</div>` }
@@ -806,7 +816,7 @@
   function orderText(o){ return `${PASTELS[o.pastel].label}${o.drink?" + Refri":""}` }
   function pad(n){ return String(n).padStart(3,"0") }
 
-  $("startBtn").addEventListener("click",startCycle); $("endBtn").addEventListener("click",endCycle); $("historyBtn").addEventListener("click",showHistory); $("closeHistoryBtn").addEventListener("click",()=>$("historyModal").classList.remove("show")); $("closeReportBtn").addEventListener("click",()=>$("reportModal").classList.remove("show")); $("printReportBtn").addEventListener("click",printReport); $("nextCycleBtn").addEventListener("click",()=>{ $("reportModal").classList.remove("show"); }); $("btnCarne").addEventListener("click",()=>selectPastel("carne")); $("btnFrango").addEventListener("click",()=>selectPastel("frango")); $("btnQueijo").addEventListener("click",()=>selectPastel("queijo")); $("btnDrink").addEventListener("click",toggleDrink); $("btnClear").addEventListener("click",clearMachine); $("btnReject").addEventListener("click",rejectOrder); $("btnFinalize").addEventListener("click",finalizeOrder);
+  $("startBtn").addEventListener("click",startCycle); $("pauseBtn").addEventListener("click",togglePause); $("endBtn").addEventListener("click",endCycle); $("historyBtn").addEventListener("click",showHistory); $("closeHistoryBtn").addEventListener("click",()=>$("historyModal").classList.remove("show")); $("closeReportBtn").addEventListener("click",()=>$("reportModal").classList.remove("show")); $("printReportBtn").addEventListener("click",printReport); $("nextCycleBtn").addEventListener("click",()=>{ $("reportModal").classList.remove("show"); }); $("btnCarne").addEventListener("click",()=>selectPastel("carne")); $("btnFrango").addEventListener("click",()=>selectPastel("frango")); $("btnQueijo").addEventListener("click",()=>selectPastel("queijo")); $("btnDrink").addEventListener("click",toggleDrink); $("btnClear").addEventListener("click",clearMachine); $("btnReject").addEventListener("click",rejectOrder); $("btnFinalize").addEventListener("click",finalizeOrder);
   $("shopNameInput").addEventListener("input",e=>setShopName(e.target.value)); $("pastelPriceInput").addEventListener("input",e=>setPastelPrice(e.target.value)); $("drinkPriceInput").addEventListener("input",e=>setDrinkPrice(e.target.value)); $("performanceFocusInput").addEventListener("change",e=>setPerformanceFocus(e.target.value));
   window.__pastelaria={startFrying,buyStock,updateBuyPreview,buyFryer,hireEmployee,hireDeliveryAssistant,trainTeam,expandStorage,advertise,buySuggested,setPastelPrice,setDrinkPrice,setShopName,setPerformanceFocus,rejectOrder,loadContinuationCode};
   $("newGameBtn").addEventListener("click",()=>{ resetGame(); $("startModal").classList.remove("show"); });
