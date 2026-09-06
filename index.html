@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pastelaria em Operação — Simulador de Gestão</title>
+  <style>
+    :root{
+      --bg:#eaf4ff; --panel:#f8fbff; --panel2:#e2effc; --panel3:#d4e7f7;
+      --ink:#16324f; --muted:#52708c; --line:#87acd0; --dark:#173b5e;
+      --accent:#ffcc4d; --good:#6ee487; --bad:#ff6b6b; --warn:#ffb347; --blue:#70bbff;
+      --purple:#a777ff; --cyan:#77f1ff;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; color:var(--ink); font-family:"Courier New", monospace;
+      background:radial-gradient(circle at top,#f8fcff 0,#dceeff 48%,#bcd8f1 100%);
+      min-height:100vh;
+    }
+    .screen{max-width:1640px;margin:0 auto;padding:12px}
+    .titlebar{
+      display:flex;justify-content:space-between;align-items:center;gap:12px;
+      padding:12px 14px;margin-bottom:12px;border:4px solid var(--dark);border-radius:10px;
+      background:linear-gradient(#ffe17a,#eda331);box-shadow:0 6px 0 var(--dark);color:#261506;
+    }
+    h1{margin:0;font-size:clamp(18px,2.6vw,32px);text-shadow:1px 1px #fff3b0;letter-spacing:.4px}
+    .subtitle{font-size:12px;max-width:640px;text-align:right;opacity:.92}
+    .hud{display:grid;grid-template-columns:repeat(9,minmax(96px,1fr));gap:8px;margin-bottom:12px}
+    .card,.panel,.modal{background:var(--panel);border:3px solid var(--dark);box-shadow:0 4px 0 var(--dark);border-radius:10px}
+    .card{padding:8px 10px;min-height:56px}
+    .label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.2px}
+    .value{font-weight:bold;font-size:17px;margin-top:4px;white-space:nowrap}
+    .cash-card{background:linear-gradient(#dff6e6,#bde8ca)}
+    .op-layout{display:flex;flex-direction:column;gap:12px}
+    .top-row{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(270px,.8fr);gap:12px;align-items:stretch}
+    .bottom-row{display:grid;grid-template-columns:minmax(0,.92fr) minmax(0,1.15fr);gap:12px;align-items:stretch}
+    .panel{padding:12px;min-width:0}
+    .panel h2{margin:0 0 8px 0;color:var(--dark);font-size:16px;padding-bottom:6px;border-bottom:2px dashed var(--line)}
+    .tiny{font-size:11px;color:var(--muted);line-height:1.35}
+    .hint{font-size:11px;color:#294763;margin:4px 0 8px 0}
+    button{
+      font-family:"Courier New", monospace;cursor:pointer;border:3px solid var(--dark);background:#f6f4e7;color:#172033;
+      border-radius:9px;padding:8px 9px;box-shadow:0 3px 0 var(--dark);font-weight:bold;transition:transform .05s ease,filter .1s ease;user-select:none;
+    }
+    button:hover{filter:brightness(1.07)} button:active{transform:translateY(2px);box-shadow:0 1px 0 var(--dark)}
+    button:disabled{opacity:.45;cursor:not-allowed;filter:grayscale(.6)}
+    .btn-row{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}.btn-row button{flex:1 1 118px}
+    .btn-primary{background:var(--good);color:#061f0c}.btn-danger{background:var(--bad);color:#310606}.btn-warn{background:var(--accent);color:#2b1d00}.btn-blue{background:var(--blue);color:#061927}.btn-purple{background:var(--purple);color:#fff}.btn-selected{outline:4px solid #fff;background:var(--purple);color:#fff}
+    .customers-wrap{display:grid;grid-template-columns:230px 1fr;gap:10px;align-items:start}
+    .customer-line,.delivery-line,.ready-list,.ticket-list{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start;min-height:92px}
+    .queue-strip{min-height:128px;padding:8px;border:2px dashed rgba(255,255,255,.18);border-radius:8px;background:rgba(0,0,0,.11)}
+    .customer{width:108px;min-height:126px;position:relative;text-align:center;padding-top:36px;border:2px solid transparent;border-radius:10px;background:rgba(255,255,255,.03)}
+    .delivery-line .customer{width:168px;min-height:154px;padding-top:42px;cursor:pointer;background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.15)}
+    .delivery-line .customer .bubble{min-width:122px;max-width:154px}
+    .customer.drop-hover{border-color:#fff;background:rgba(255,255,255,.12)}.delivery-line .customer.drag-hover{outline:4px solid #fff;background:rgba(255,255,255,.16)}
+    .bubble{position:absolute;top:0;left:50%;transform:translateX(-50%);min-width:84px;max-width:116px;padding:4px 5px;background:#fffbe8;color:#21170c;border:2px solid var(--dark);border-radius:9px;font-size:10px;line-height:1.12;z-index:2;box-shadow:0 2px 0 var(--dark)}
+    .bubble:after{content:"";position:absolute;bottom:-8px;left:45%;border:6px solid transparent;border-top-color:var(--dark)}
+    .sprite{width:45px;height:62px;margin:14px auto 0;position:relative}.head{width:24px;height:22px;background:#f0c49f;border:3px solid var(--dark);border-radius:50%;margin:0 auto}.hair{position:absolute;top:-3px;left:12px;width:22px;height:10px;background:#2d1e17;border:2px solid var(--dark);border-radius:9px 9px 2px 2px}.body{width:32px;height:28px;margin:-1px auto 0;border:3px solid var(--dark);border-radius:6px}.legs{width:34px;height:9px;margin:-2px auto 0;border-left:8px solid #263043;border-right:8px solid #263043}.shirt-azul{background:#4aa3ff}.shirt-verde{background:#55d17a}.shirt-vermelho{background:#ff5f6d}.shirt-amarelo{background:#ffd95a}.shirt-roxo{background:#a777ff}.mood{font-size:18px;margin-top:-2px}.customer-name{font-size:10px;text-transform:uppercase;color:var(--muted)}
+    .patience{width:74px;height:8px;margin:3px auto 0;border:2px solid var(--dark);background:#431d20;border-radius:5px;overflow:hidden}.patience span{display:block;height:100%;background:var(--good);width:100%}.patience.warn span{background:var(--warn)}.patience.bad span{background:var(--bad)}
+    .machine{background:#1b2232;border:3px solid var(--dark);padding:10px;border-radius:10px}.machine-display{background:#101824;border:3px inset #3d5878;min-height:64px;padding:8px;color:#bdf7ff;margin-bottom:8px;font-size:13px;line-height:1.3}
+    .counter-grid{display:grid;grid-template-columns:1.05fr 1fr;gap:10px}.counter-box{background:rgba(0,0,0,.14);border:2px dashed rgba(255,255,255,.18);border-radius:8px;padding:8px;min-height:162px}.counter-box h3{margin:0 0 6px;color:#fff;font-size:13px}
+    .ticket,.ready-order{background:#fff7d7;color:#241707;border:3px solid var(--dark);border-radius:8px;box-shadow:0 3px 0 var(--dark);padding:8px;min-width:132px;max-width:190px;font-size:12px;position:relative}.ticket button{margin-top:6px;width:100%;padding:6px}.ticket.wait-warn{background:#ffe1a3}.ticket.wait-bad{background:#ffb7b7}.order-no{display:inline-block;background:#101824;color:#fff;border:2px solid var(--dark);border-radius:7px;padding:2px 5px;margin-bottom:4px}.ready-order{cursor:pointer;background:#d7fff0}.ready-order.selected{outline:4px solid #fff}.ready-order.auto{background:#dff2ff}.tag{display:inline-block;border:2px solid var(--dark);border-radius:999px;padding:2px 6px;font-size:10px;background:#fff;color:#111;margin-top:4px}.tag.warn{background:#fff1ad}.tag.good{background:#baf7ca}.tag.bad{background:#ffb5b5}
+    .production-grid{display:grid;grid-template-columns:minmax(230px,.9fr) minmax(280px,1.1fr);gap:10px}.fryer{background:#fff8d8;border:3px solid var(--dark);border-radius:9px;padding:8px;margin-bottom:8px}.fryer h3{margin:0 0 7px 0;color:#8a5b00;font-size:13px}.slots{display:grid;grid-template-columns:repeat(auto-fit,minmax(62px,1fr));gap:10px;align-items:end}.slot{position:relative;min-height:150px;max-width:90px;margin:auto;background:#fff9dc;border:3px solid #8a5b00;border-radius:45% 45% 42% 42% / 18% 18% 14% 14%;display:flex;align-items:center;justify-content:center;text-align:center;overflow:hidden;font-size:11px;color:#5a4300;box-shadow:inset 0 0 0 4px #f6d36a}.slot .progress{position:absolute;left:0;bottom:0;width:100%;height:0;background:linear-gradient(#ffe56f,#e5a91c);opacity:.78}.slot>div:first-child{position:relative;z-index:2;font-weight:bold}.slot.ready{background:#244b31;animation:pulse .65s infinite alternate}@keyframes pulse{from{filter:brightness(1)}to{filter:brightness(1.35)}}
+    .management-row{display:grid;grid-template-columns:1.1fr 1fr 1fr;gap:12px;margin-top:12px}.stock-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.stock-item{background:var(--panel2);border:2px solid var(--dark);border-radius:8px;padding:8px;text-align:left}.stock-item.low{background:#5d2b2f}.stock-item.warn{background:#5f4a24}.stock-cap{font-size:10px;color:var(--muted)}.stockbar{display:flex;height:13px;border:2px solid var(--dark);border-radius:7px;overflow:hidden;background:#192234;margin:6px 0}.bar-available{background:var(--good)}.bar-reserved{background:var(--accent)}.bar-free{background:#5b6475}.stock-legend{font-size:9px;line-height:1.35;color:#294763}.stock-numbers{font-size:11px;line-height:1.35}.log-box{height:160px;overflow:auto;background:#101824;border:2px inset #3d5878;border-radius:7px;padding:8px;font-size:11px}.log-line{margin-bottom:5px}.log-good{color:var(--good)}.log-bad{color:var(--bad)}.log-warn{color:var(--warn)}
+    .modal-wrap{position:fixed;inset:0;background:rgba(0,0,0,.72);display:none;align-items:flex-start;justify-content:center;padding:18px;z-index:20;overflow:auto}.modal-wrap.show{display:flex}.modal{width:min(1200px,96vw);padding:16px;background:#253550}.modal h2{margin:0 0 10px;color:#dceeff}.report-grid,.upgrade-grid,.history-grid,.stock-buy-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.report-item,.upgrade,.history-item,.buy-card{background:var(--panel2);border:2px solid var(--dark);border-radius:8px;padding:10px}.report-item .value{font-size:16px}.diagnostic{line-height:1.45;font-size:13px}.cash-banner{margin:10px 0 12px;padding:12px;border:3px solid var(--dark);border-radius:10px;background:linear-gradient(90deg,#1f5835,#2e7d4c);font-size:22px;font-weight:bold;text-align:center;box-shadow:0 3px 0 var(--dark)}.buy-card h3,.upgrade h3{margin:0 0 5px;color:var(--ink);font-size:14px}.buy-card p,.upgrade p{margin:0 0 8px;color:#294763;font-size:11px;line-height:1.3}.buy-controls{display:grid;grid-template-columns:1fr 1fr;gap:6px}.buy-controls input{width:100%;font-family:"Courier New",monospace;padding:7px;border:2px solid var(--dark);border-radius:7px}.cost-preview{margin-top:7px;padding:7px;border:2px dashed rgba(255,255,255,.25);border-radius:7px;background:rgba(0,0,0,.16);font-size:11px;line-height:1.35}.print-area{display:none}.priority-high{border-color:#ff6b6b;background:#513545}.priority-medium{border-color:#ffcc4d}.priority-low{opacity:.88}.hidden{display:none!important}.footer-note{margin-top:10px;text-align:center;color:var(--muted);font-size:11px}
+
+    .config-bar{display:grid;grid-template-columns:1.2fr .65fr .75fr 1fr 1.6fr;gap:10px;align-items:end;margin-bottom:12px;padding:12px}
+    .field label{display:block;font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:4px}
+    .field input,.field select{width:100%;font-family:"Courier New",monospace;border:3px solid var(--dark);border-radius:8px;padding:8px;background:#fff;color:#111;font-weight:bold}
+    .price-effect{background:#e7f1fb;border:2px dashed var(--line);border-radius:8px;padding:8px;font-size:11px;color:#294763;line-height:1.35}
+    @media(max-width:1180px){.hud{grid-template-columns:repeat(3,1fr)}.management-row{grid-template-columns:1fr}.report-grid,.upgrade-grid,.history-grid,.stock-buy-grid{grid-template-columns:repeat(2,1fr)}.subtitle{display:none}}
+    @media(max-width:760px){.top-row,.bottom-row,.production-grid,.counter-grid,.customers-wrap,.config-bar{grid-template-columns:1fr}}
+    @media(max-width:620px){.hud{grid-template-columns:repeat(2,1fr)}.report-grid,.upgrade-grid,.history-grid,.stock-buy-grid,.stock-grid{grid-template-columns:1fr}.btn-row button{flex-basis:100%}.customer{width:88px}.screen{padding:8px}}
+    @media print{body{background:#fff!important;color:#000!important}.screen,.modal-wrap,.titlebar,.hud,.btn-row,.management-row,.footer-note{display:none!important}.print-area{display:block!important;position:static!important;width:100%!important;margin:0!important;padding:0!important;color:#000!important;background:#fff!important;font-family:Arial, sans-serif!important}.print-area h1{font-size:22px;margin:0 0 8px;color:#000;text-shadow:none}.print-area h2{font-size:15px;margin:16px 0 6px;color:#000;border-bottom:1px solid #000;padding-bottom:4px}.print-area table{width:100%;border-collapse:collapse;margin-bottom:10px;font-size:11px}.print-area th,.print-area td{border:1px solid #333;padding:5px;text-align:left}.print-area .small{font-size:10px;color:#333}.print-area ul{font-size:11px}}
+  </style>
+</head>
+<body>
+<div class="screen">
+  <div class="titlebar">
+    <h1>🥟 Pastelaria em Operação</h1>
+    <div class="subtitle">Simulador de Gestão de Operações e Serviços: previsão, capacidade, filas, estoque, gargalos, custos e satisfação.</div>
+  </div>
+  <div class="config-bar panel">
+    <div class="field"><label for="shopNameInput">Nome da pastelaria</label><input id="shopNameInput" maxlength="40" value="Pastelaria do Vale" placeholder="Digite o nome da pastelaria"></div>
+    <div class="field"><label for="pastelPriceInput">Preço do pastel</label><input id="pastelPriceInput" type="number" step="0.50" value="10"></div>
+    <div class="field"><label for="drinkPriceInput">Preço do refrigerante/suco</label><input id="drinkPriceInput" type="number" step="0.50" value="6"></div>
+    <div class="field"><label for="performanceFocusInput">Prioridade do dia</label><select id="performanceFocusInput"><option value="custo">Custo</option><option value="rapidez">Rapidez</option><option value="confiabilidade">Confiabilidade</option><option value="qualidade">Qualidade</option><option value="flexibilidade">Flexibilidade</option></select></div>
+    <div class="price-effect" id="priceEffectText">Preço médio: boa demanda, boa satisfação e margem equilibrada.</div>
+  </div>
+  <div class="hud">
+    <div class="card"><div class="label">Dia / semana</div><div class="value" id="cycleValue">Seg • S1</div></div>
+    <div class="card"><div class="label">Cronômetro</div><div class="value" id="timerValue">05:00</div></div>
+    <div class="card cash-card"><div class="label">Caixa</div><div class="value" id="cashValue">R$ 500,00</div></div>
+    <div class="card"><div class="label">Satisfação</div><div class="value" id="satisfactionValue">100/100</div></div>
+    <div class="card"><div class="label">Equipe</div><div class="value" id="employeesValue">2</div></div>
+    <div class="card"><div class="label">Auxiliar entrega</div><div class="value" id="assistantValue">Não</div></div>
+    <div class="card"><div class="label">Espaços fritura</div><div class="value" id="fryersValue">4</div></div>
+    <div class="card"><div class="label">Atendidos</div><div class="value" id="servedValue">0</div></div>
+    <div class="card"><div class="label">Perdidos</div><div class="value" id="lostValue">0</div></div>
+  </div>
+  <section class="panel" id="planningPanel" style="margin-bottom:12px">
+    <h2>Planejamento da demanda</h2>
+    <div class="tiny">Consulte o histórico. O jogo não fornece a previsão pronta: registre abaixo a previsão calculada para o dia antes de iniciar a operação.</div>
+    <div class="config-bar" style="margin-top:8px">
+      <div class="field"><label>Dia atual</label><div class="value" id="planningDay">Segunda-feira — Semana 1</div></div>
+      <div class="field"><label for="forecastInput">Sua previsão de demanda (clientes)</label><input id="forecastInput" type="number" min="1" step="1" placeholder="Ex.: 32"></div>
+      <div class="price-effect" id="forecastHint">Use média móvel, previsão linear, suavização ou decomposição conforme a atividade proposta.</div>
+    </div>
+  </section>
+  <div class="btn-row">
+    <button id="startBtn" class="btn-primary">▶ Iniciar dia de operação</button>
+    <button id="endBtn" class="btn-warn" disabled>■ Encerrar dia e ver relatório</button>
+    <button id="historyBtn" class="btn-blue">📊 Histórico</button>
+  </div>
+  <div class="op-layout">
+    <div class="top-row">
+      <section class="panel">
+        <h2>1. Clientes e fila de pedidos</h2>
+        <div class="hint">O número da comanda acompanha o cliente, a produção e a bandeja.</div>
+        <div class="customers-wrap">
+          <div class="queue-strip">
+            <div class="label">Cliente no balcão</div>
+            <div class="customer-line" id="activeCustomer"></div>
+          </div>
+          <div class="queue-strip">
+            <div class="label">Fila de clientes</div>
+            <div class="customer-line" id="customerQueue"></div>
+          </div>
+        </div>
+      </section>
+      <section class="panel">
+        <h2>2. Máquina de pedidos</h2>
+        <div class="machine">
+          <div class="machine-display" id="machineDisplay">Selecione o pastel e, se for o caso, a bebida.</div>
+          <div class="btn-row">
+            <button id="btnCarne">Carne</button><button id="btnFrango">Frango</button><button id="btnQueijo">Queijo</button>
+          </div>
+          <div class="btn-row">
+            <button id="btnDrink">+ Suco/Refrigerante</button><button id="btnClear">Limpar</button><button id="btnReject" class="btn-danger">Recusar pedido</button><button id="btnFinalize" class="btn-primary">Finalizar</button>
+          </div>
+        </div>
+        <div class="tiny">Tempo de fritura padronizado: 20s para todos os sabores. O refrigerante/suco não vai para a fritadeira.</div>
+      </section>
+    </div>
+    <div class="bottom-row">
+      <section class="panel">
+        <h2>3. Balcão de entrega</h2>
+        <div class="hint">Clique na bandeja pronta e depois clique no cartão do cliente correto, ou arraste a bandeja para a área do cliente. O jogo não indica o cliente certo: confira o número da comanda.</div>
+        <div class="counter-grid">
+          <div class="counter-box">
+            <h3>Clientes aguardando entrega</h3>
+            <div class="delivery-line" id="deliveryCustomers"></div>
+          </div>
+          <div class="counter-box">
+            <h3>Bandejas prontas</h3>
+            <div class="ready-list" id="readyOrders"></div>
+            <div class="tiny" id="deliverySelectionHint" style="margin-top:8px">Nenhuma bandeja selecionada.</div>
+          </div>
+        </div>
+      </section>
+      <section class="panel">
+        <h2>4. Produção e fritadeiras</h2>
+        <div class="production-grid">
+          <div>
+            <div class="label">Comandas em produção</div>
+            <div class="tiny">Você pode seguir a ordem de chegada ou escolher outro pedido para fritar primeiro.</div>
+            <div class="ticket-list" id="ticketQueue"></div>
+          </div>
+          <div>
+            <div class="label">Fritadeiras</div>
+            <div class="tiny">A fritadeira começa com 4 espaços. Cada melhoria libera +1 espaço.</div>
+            <div id="fryerArea"></div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+  <div class="management-row">
+    <section class="panel">
+      <h2>Estoque</h2><div class="stock-grid" id="stockGrid"></div>
+    </section>
+    <section class="panel">
+      <h2>Log da operação</h2><div class="log-box" id="logBox"></div>
+    </section>
+    <section class="panel">
+      <h2>Conceitos em jogo</h2>
+      <div class="tiny"><b>Capacidade:</b> limite da fritadeira e da equipe.<br><b>Sequenciamento:</b> escolher o que produzir primeiro.<br><b>Estoque:</b> comprar com caixa limitado e capacidade máxima.<br><b>Desperdício:</b> comprar demais pode gerar perda de 20%.<br><b>Gargalo:</b> fila acumulada em atendimento, produção ou entrega.<br><b>Objetivos de desempenho:</b> custo, rapidez, confiabilidade, qualidade e flexibilidade aparecem nos indicadores do relatório.<br><br><b>Sistema desenvolvido para a disciplina Gestão de Operações e Serviços, Professor Me. Luan Sodré da UNIVALE.</b></div>
+    </section>
+  </div>
+  <div class="footer-note">Sistema desenvolvido para a disciplina Gestão de Operações e Serviços, Professor Me. Luan Sodré da UNIVALE.</div>
+</div>
+
+<div class="modal-wrap" id="reportModal">
+  <div class="modal">
+    <h2 id="reportTitle">Relatório do dia</h2>
+    <div id="eventText" class="tiny"></div>
+    <div class="report-grid" id="reportGrid"></div>
+    <div class="panel" style="margin-top:12px"><h2>Diagnóstico gerencial</h2><div id="diagnosticText" class="diagnostic"></div></div>
+    <h2>Compras e melhorias para o próximo dia</h2>
+    <div class="cash-banner" id="cashBanner">CAIXA DISPONÍVEL: R$ 0,00</div>
+    <div class="panel"><h2>Melhorias operacionais</h2><div class="tiny">Amplie a capacidade de estoque antes de comprar materiais, se precisar comportar mais unidades. Investimentos e contratações exigem autorização gerencial.</div><div class="upgrade-grid" id="upgradeGrid"></div></div>
+    <div class="panel"><h2>Compra de materiais</h2><div class="tiny">Escolha a quantidade. O estoque é limitado pela capacidade atual. Para comprar mais, amplie a capacidade de estoque.</div><div class="stock-buy-grid" id="stockBuyGrid"></div></div>
+    <div class="btn-row" style="margin-top:14px"><button id="nextCycleBtn" class="btn-primary">↩ Fechar para planejar o próximo dia</button><button id="printReportBtn" class="btn-blue">🖨 Imprimir / salvar em PDF</button><button id="closeReportBtn">Fechar relatório</button></div>
+  </div>
+</div>
+
+<div class="modal-wrap show" id="startModal">
+  <div class="modal" style="max-width:760px">
+    <h2>Iniciar simulação</h2>
+    <div class="diagnostic">
+      <p>Escolha iniciar um novo jogo ou continuar uma simulação anterior usando o código gerado no relatório.</p>
+    </div>
+    <div class="btn-row">
+      <button id="newGameBtn" class="btn-primary">▶ Novo jogo</button>
+    </div>
+    <div class="panel" style="margin-top:12px">
+      <h2>Continuar jogo</h2>
+      <div class="tiny">Cole aqui o Código de Continuação da Simulação gerado no relatório.</div>
+      <textarea id="continuationInput" style="width:100%;min-height:110px;margin-top:8px;border:3px solid var(--dark);border-radius:8px;padding:8px;font-family:'Courier New',monospace"></textarea>
+      <div class="btn-row"><button id="loadGameBtn" class="btn-blue">↪ Continuar com código</button></div>
+      <div id="loadGameMsg" class="tiny"></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-wrap" id="historyModal"><div class="modal"><h2>Histórico de demanda e semanas</h2><div class="history-grid" id="historyGrid"></div><div class="btn-row" style="margin-top:14px"><button id="closeHistoryBtn">Fechar</button></div></div></div>
+<div id="printArea" class="print-area"></div>
+
+<script>
+(() => {
+  const CYCLE_SECONDS = 300;
+  const FRY_SECONDS = 20;
+  const DAYS = ["Segunda-feira","Terça-feira","Quarta-feira","Quinta-feira","Sexta-feira","Sábado","Domingo"];
+  const DAY_SHORT = ["Seg","Ter","Qua","Qui","Sex","Sáb","Dom"];
+  const DAY_INDEX = [0.78,0.84,0.92,1.00,1.18,1.38,1.10];
+  const BASE_WEEK_DEMAND = 31;
+  const MAX_CUSTOMERS_ON_SCREEN = 6;
+  const COLORS = ["azul","verde","vermelho","amarelo","roxo"];
+  const PASTELS = {
+    carne:{label:"Carne",price:10,cost:4.50,stockKey:"carne",fry:FRY_SECONDS},
+    frango:{label:"Frango",price:10,cost:4.20,stockKey:"frango",fry:FRY_SECONDS},
+    queijo:{label:"Queijo",price:10,cost:4.00,stockKey:"queijo",fry:FRY_SECONDS}
+  };
+  const DRINK = {label:"Suco/Refrigerante",price:6,cost:3};
+  const COSTS = {massa:1.20,carne:2.30,frango:2.00,queijo:1.80,bebida:3.00,embalagem:.50,fryer:60,employeeHire:150,deliveryAssistantHire:150,employeeCycle:12,deliveryAssistantCycle:12,training:80,storage:120,fixedBase:18};
+  const INITIAL_CAPACITY = {massa:45,carne:15,frango:15,queijo:15,bebida:30,embalagem:45};
+  const STOCK_NAMES = {massa:"Massa",carne:"Carne",frango:"Frango",queijo:"Queijo",bebida:"Bebidas",embalagem:"Embalagens"};
+  const PERISHABLE = ["massa","carne","frango","queijo"];
+  const PERFORMANCE_LABELS = {custo:"Custo",rapidez:"Rapidez",confiabilidade:"Confiabilidade",qualidade:"Qualidade",flexibilidade:"Flexibilidade"};
+  function zeroStock(){ const z={}; Object.keys(INITIAL_CAPACITY).forEach(k=>z[k]=0); return z }
+  let state = {};
+  let cycleTimer = null, renderTimer = null, selectedPastel = null, selectedDrink = false, selectedReadyId = null, currentReport = null;
+  const $ = id => document.getElementById(id);
+  const fmtMoney = v => Number(v).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+  const rand = (min,max)=>Math.floor(Math.random()*(max-min+1))+min;
+  const choice = arr => arr[Math.floor(Math.random()*arr.length)];
+  const clamp = (n,min,max)=>Math.max(min,Math.min(max,n));
+  const copy = obj => JSON.parse(JSON.stringify(obj));
+  function normalizePrice(v){ const n=Number(String(v).replace(",",".")); return Number.isFinite(n) ? Math.max(0,Math.round(n*100)/100) : 10 }
+  function normalizeDrinkPrice(v){ const n=Number(String(v).replace(",",".")); return Number.isFinite(n) ? Math.max(0,Math.round(n*100)/100) : 6 }
+  function syncPastelPrices(){ ["carne","frango","queijo"].forEach(k=>PASTELS[k].price=(state.pastelPrice ?? 10)); DRINK.price=Number.isFinite(Number(state.drinkPrice)) ? Number(state.drinkPrice) : 6 }
+  function priceProfile(price=(state.pastelPrice ?? 10)){
+    price=Number(price);
+    if(price>50) return {tier:"preço abusivo",label:"Preço abusivo",demandMult:999,cycleSatisfaction:-8,delayPenaltyMult:2,errorPenaltyMult:2,lostPenalty:16,message:"Preço acima de R$ 50,00: a demanda zera, independentemente de marketing ou evento positivo."};
+    if(price>30) return {tier:"preço quase proibitivo",label:"Preço quase proibitivo",demandMult:999,cycleSatisfaction:-6,delayPenaltyMult:1.95,errorPenaltyMult:1.95,lostPenalty:15,message:"Preço acima de R$ 30,00: regra de ouro — pode aparecer no máximo 1 cliente eventual no ciclo."};
+    if(price<10){
+      const mult=Math.max(.22,Math.exp((price-10)/5));
+      return {tier:"preço promocional",label:"Preço promocional",demandMult:mult,cycleSatisfaction:-2,delayPenaltyMult:.82,errorPenaltyMult:.85,lostPenalty:5,message:"Preço abaixo de R$ 10,00: a demanda aumenta de forma exponencial, pressionando estoque, fila, fritadeira e margem."};
+    }
+    if(price<=11) return {tier:"medio",label:"Preço médio",demandMult:.95,cycleSatisfaction:1,delayPenaltyMult:1,errorPenaltyMult:1,lostPenalty:7,message:"Preço médio: boa demanda, boa satisfação e margem equilibrada."};
+    if(price<=14) return {tier:"caro",label:"Preço caro",demandMult:1.35,cycleSatisfaction:0,delayPenaltyMult:1.35,errorPenaltyMult:1.35,lostPenalty:10,message:"Preço caro: demanda menor e cliente mais sensível a atraso, erro ou pedido incompleto."};
+    if(price<=20) return {tier:"muito caro",label:"Preço muito caro",demandMult:1.80,cycleSatisfaction:-1,delayPenaltyMult:1.60,errorPenaltyMult:1.60,lostPenalty:12,message:"Preço muito caro: demanda cai bastante e qualquer falha derruba mais a satisfação."};
+    return {tier:"preço proibitivo",label:"Preço proibitivo",demandMult:2.60,cycleSatisfaction:-3,delayPenaltyMult:1.85,errorPenaltyMult:1.85,lostPenalty:14,message:"Preço proibitivo: poucos clientes aceitam comprar e a tolerância a falhas fica muito baixa."};
+  }
+  function updatePriceTexts(){
+    const profile=priceProfile();
+    const txt=`${profile.label}: ${profile.message} Pastel: ${fmtMoney((state.pastelPrice ?? 10))} | Refrigerante/suco: ${fmtMoney((DRINK.price ?? 6))}.`;
+    if($("priceEffectText")) $("priceEffectText").textContent=txt;
+    if($("modalPriceEffectText")) $("modalPriceEffectText").textContent=txt;
+    if($("pastelPriceInput")) $("pastelPriceInput").value=(state.pastelPrice ?? 10);
+    if($("drinkPriceInput")) $("drinkPriceInput").value=(DRINK.price ?? 6);
+    if($("modalPastelPriceInput")) $("modalPastelPriceInput").value=(state.pastelPrice ?? 10);
+  }
+  function setPastelPrice(v){ state.pastelPrice=normalizePrice(v); syncPastelPrices(); updatePriceTexts(); log(`Preço do pastel ajustado para ${fmtMoney(state.pastelPrice)}. ${priceProfile().message}`,"warn"); }
+  function setDrinkPrice(v){ state.drinkPrice=normalizeDrinkPrice(v); syncPastelPrices(); updatePriceTexts(); log(`Preço do refrigerante/suco ajustado para ${fmtMoney(DRINK.price)}.`,"warn"); }
+  function setShopName(v){ state.shopName=(String(v||"").trim()||"Pastelaria do Vale").slice(0,40); }
+  function setPerformanceFocus(v){ state.performanceFocus = PERFORMANCE_LABELS[v] ? v : "custo"; }
+
+  function dayIndex(){ return (Math.max(1,state.cycle)-1)%7; }
+  function weekNumber(){ return Math.floor((Math.max(1,state.cycle)-1)/7)+1; }
+  function currentDayName(){ return DAYS[dayIndex()]; }
+  function generatePriorHistory(){
+    const weeks=[];
+    const trend=0.96 + Math.random()*.06;
+    for(let w=0;w<3;w++){
+      const weekScale=(0.92+w*.035)*(0.96+Math.random()*.08);
+      DAYS.forEach((d,i)=>{
+        const noise=0.92+Math.random()*.16;
+        const demand=Math.max(8,Math.round(BASE_WEEK_DEMAND*DAY_INDEX[i]*weekScale*noise*trend));
+        weeks.push({simulated:true,week:w-2,dayIndex:i,day:d,arrived:demand,demand:demand,event:"Histórico simulado"});
+      });
+    }
+    return weeks;
+  }
+  function flavorTrend(){
+    const i=dayIndex();
+    return {carne:0.36+(i>=4&&i<=5?0.05:0), frango:0.32+(i===3?0.03:0), queijo:0};
+  }
+  function freshStats(){return {arrived:0,registered:0,refused:0,stockouts:0,served:0,lost:0,errors:0,autoDelivered:0,manualDelivered:0,readyMade:0,revenue:0,variableCost:0,wasteCost:0,fixedCost:0,cycleInvestment:0,totalWait:0,readyWaitTotal:0,maxCustomerQueue:0,maxProductionQueue:0,maxReadyQueue:0,sold:{carne:0,frango:0,queijo:0,bebida:0},consumed:{massa:0,carne:0,frango:0,queijo:0,bebida:0,embalagem:0},spoilage:{},eventName:"Movimento normal",eventDescription:"Demanda dentro do esperado.",bottleneck:"Ainda não identificado",stockStart:{},capacityStart:{},performanceFocus:"custo",forecast:null,demandTarget:0,nominalCapacity:0,effectiveCapacity:0,utilization:0,efficiency:0,idleCapacity:0,serviceLevel:0}}
+
+  function resetGame(){
+    clearInterval(cycleTimer); clearInterval(renderTimer);
+    const existingName = $("shopNameInput") ? $("shopNameInput").value : "Pastelaria do Vale";
+    const existingPrice = $("pastelPriceInput") ? $("pastelPriceInput").value : 10;
+    const existingDrinkPrice = $("drinkPriceInput") ? $("drinkPriceInput").value : 6;
+    state = {running:false,cycle:1,remaining:CYCLE_SECONDS,cash:500,satisfaction:100,employees:2,fryers:1,fryerCapacity:4,deliveryAssistants:0,trained:false,pendingInvestment:0,shopName:(String(existingName||"").trim()||"Pastelaria do Vale").slice(0,40),pastelPrice:normalizePrice(existingPrice),drinkPrice:normalizeDrinkPrice(existingDrinkPrice),performanceFocus:($("performanceFocusInput")?$("performanceFocusInput").value:"custo"),stock:copy(INITIAL_CAPACITY),reserved:zeroStock(),capacity:copy(INITIAL_CAPACITY),activeCustomer:null,customerQueue:[],deliveryCustomers:[],ticketQueue:[],fryerSlots:[],readyOrders:[],history:[],simulatedHistory:generatePriorHistory(),logs:[],stats:freshStats(),nextCustomerId:1,nextOrderNo:1,nextTicketId:1,nextSpawnIn:0,assistantCounter:0,expensiveCustomerSpawned:false,weekScale:(0.92+Math.random()*.16),eventDemandMult:1,eventSpeedFactor:1,demand:{min:9,max:16,patience:1}};
+    syncPastelPrices(); updatePriceTexts(); selectedPastel=null; selectedDrink=false; selectedReadyId=null; setupFryers(); log("Jogo reiniciado. Consulte o histórico, calcule a previsão e inicie a segunda-feira.","warn"); closeModals(); render();
+  }
+  function setupFryers(){state.fryerSlots=[]; for(let i=0;i<state.fryerCapacity;i++) state.fryerSlots.push(null)}
+  function chooseCycleEvent(){
+    const events=[
+      {name:"Movimento normal",desc:"Demanda próxima ao padrão esperado para o dia.",mult:1,patience:1,speed:1},
+      {name:"Pico inesperado",desc:"O movimento ficou acima do padrão do dia.",mult:1.14,patience:.94,speed:1},
+      {name:"Dia chuvoso",desc:"O movimento caiu, mas os clientes tendem a esperar um pouco mais.",mult:.86,patience:1.12,speed:1},
+      {name:"Comentário positivo nas redes",desc:"A procura aumentou acima do padrão semanal.",mult:1.10,patience:1,speed:1},
+      {name:"Ausência na equipe",desc:"A demanda segue o padrão, mas a capacidade efetiva de produção cai.",mult:1,patience:.96,speed:1.18}
+    ];
+    let e = state.pendingDemandBoost ? events[3] : choice(events);
+    state.pendingDemandBoost=false; state.eventDemandMult=e.mult; state.eventSpeedFactor=e.speed||1;
+    const dailyBase=BASE_WEEK_DEMAND*DAY_INDEX[dayIndex()]*state.weekScale;
+    const randomDay=.92+Math.random()*.16;
+    state.dayDemandTarget=Math.max(8,Math.round(dailyBase*randomDay*e.mult));
+    state.demand={min:Math.max(4,Math.round(CYCLE_SECONDS/state.dayDemandTarget*.82)),max:Math.max(6,Math.round(CYCLE_SECONDS/state.dayDemandTarget*1.18)),patience:e.patience};
+    state.stats.demandTarget=state.dayDemandTarget; state.stats.eventName=e.name; state.stats.eventDescription=e.desc;
+  }
+  function startCycle(){
+    if(state.running) return;
+    const forecast=Number($("forecastInput")&&$("forecastInput").value);
+    if(!Number.isFinite(forecast)||forecast<=0){ alert("Registre sua previsão de demanda para o dia antes de iniciar a operação."); return; }
+    closeModals(); clearMachine();
+    if($("shopNameInput")) setShopName($("shopNameInput").value);
+    if($("pastelPriceInput")) setPastelPrice($("pastelPriceInput").value);
+    if($("drinkPriceInput")) setDrinkPrice($("drinkPriceInput").value);
+    if($("performanceFocusInput")) setPerformanceFocus($("performanceFocusInput").value);
+    state.running=true; state.remaining=CYCLE_SECONDS; state.activeCustomer=null; state.customerQueue=[]; state.deliveryCustomers=[]; state.ticketQueue=[]; state.readyOrders=[]; selectedReadyId=null; setupFryers();
+    state.expensiveCustomerSpawned=false; state.stats=freshStats(); state.stats.stockStart=copy(state.stock); state.stats.capacityStart=copy(state.capacity); state.stats.performanceFocus=state.performanceFocus; state.stats.cycleInvestment=state.pendingInvestment; state.stats.forecast=Math.round(forecast); state.pendingInvestment=0; state.assistantCounter=0;
+    chooseCycleEvent(); state.nextSpawnIn=0;
+    const profile=priceProfile();
+    if(profile.cycleSatisfaction) state.satisfaction=clamp(state.satisfaction+profile.cycleSatisfaction,0,100);
+    $("startBtn").disabled=true; $("endBtn").disabled=false;
+    log(`${currentDayName()} — Semana ${weekNumber()} iniciada. Evento: ${state.stats.eventName}.`,"good");
+    log(`Preço do pastel: ${fmtMoney(state.pastelPrice)} — ${profile.message}`, profile.tier==="medio"?"good":"warn");
+    cycleTimer=setInterval(gameTick,1000); renderTimer=setInterval(render,350); render();
+  }
+  function gameTick(){
+    if(!state.running) return;
+    state.remaining--;
+    if(state.remaining>0){ maybeSpawnCustomer(); updateFryers(); updatePatience(); updateBottleneck(); }
+    if(state.remaining===240) log("Faixa de maior movimento do dia: as chegadas se intensificaram.","warn");
+    if(state.remaining===120) log("O fluxo retorna ao padrão do dia antes da redução final.","warn");
+    if(state.remaining===60) log("Fim do expediente se aproximando: entrada de clientes reduzida.","warn");
+    if(state.remaining===15) log("Últimos segundos: novos clientes encerrados. Finalize o que já assumiu.","warn");
+    if(state.remaining<=0) endCycle();
+    render();
+  }
+  function spawnDelay(){
+    if(state.remaining<=15) return 999;
+    let base=rand(state.demand.min,state.demand.max);
+    const inPeak=state.remaining<=240 && state.remaining>=120;
+    if(inPeak) base*=.82;
+    if(state.remaining<=60) base*=1.28;
+    base*=priceProfile().demandMult;
+    return Math.max(4,Math.round(base));
+  }
+  function maybeSpawnCustomer(){
+    const total = (state.activeCustomer?1:0)+state.customerQueue.length;
+    if(total>=MAX_CUSTOMERS_ON_SCREEN) return;
+    const price=Number(state.pastelPrice ?? 10);
+    if(price>50) return;
+    if(price>30 && state.expensiveCustomerSpawned) return;
+    state.nextSpawnIn--;
+    if(state.nextSpawnIn<=0 && state.remaining>15){ addCustomer(); if(price>30) state.expensiveCustomerSpawned=true; state.nextSpawnIn=spawnDelay(); }
+  }
+  function randomOrder(){
+    const t=flavorTrend(); const carne=t.carne, frango=t.frango; const r=Math.random();
+    const pastel=r<carne?"carne":r<carne+frango?"frango":"queijo";
+    const drinkBase=dayIndex()>=4?.42:.34;
+    return {pastel,drink:Math.random()<drinkBase};
+  }
+  function addCustomer(){
+    const c={id:state.nextCustomerId++,orderNo:state.nextOrderNo++,color:choice(COLORS),order:randomOrder(),bornAt:Date.now(),patience:rand(105,155)*state.demand.patience,mood:"🙂"};
+    if(!state.activeCustomer) state.activeCustomer=c; else state.customerQueue.push(c);
+    state.stats.arrived++; state.stats.maxCustomerQueue=Math.max(state.stats.maxCustomerQueue,(state.activeCustomer?1:0)+state.customerQueue.length);
+  }
+  function selectPastel(p){selectedPastel=p; renderMachineDisplay(); updateMachineButtons()}
+  function toggleDrink(){selectedDrink=!selectedDrink; renderMachineDisplay(); updateMachineButtons()}
+  function clearMachine(){selectedPastel=null; selectedDrink=false; renderMachineDisplay(); updateMachineButtons()}
+  function finalizeOrder(){
+    if(!state.running){log("Inicie o ciclo antes de registrar pedidos.","warn"); return}
+    const c=state.activeCustomer;
+    if(!c){log("Nenhum cliente no balcão.","warn"); return}
+    if(!selectedPastel){log("Selecione o sabor do pastel.","warn"); return}
+    const typed={pastel:selectedPastel,drink:selectedDrink};
+    const missing=stockProblem(typed);
+    if(missing){ state.stats.stockouts++; log(`Não há ${STOCK_NAMES[missing].toLowerCase()} disponível para aceitar a comanda #${pad(c.orderNo)}. Recuse o pedido ou ajuste a seleção.`,"bad"); return }
+    const correct = sameOrder(typed,c.order);
+    if(!correct){state.stats.errors++; state.satisfaction=clamp(state.satisfaction-5,0,100); log(`Comanda #${pad(c.orderNo)} registrada diferente do pedido do cliente.`,"bad")}
+    reserveOrder(typed);
+    const ticket={id:state.nextTicketId++,orderNo:c.orderNo,customerId:c.id,customerColor:c.color,order:typed,expected:c.order,correctlyRegistered:correct,createdAt:Date.now(),status:"fila",salePrice:{pastel:Number(state.pastelPrice ?? 10),drink:Number(DRINK.price ?? 6)}};
+    state.ticketQueue.push(ticket); state.deliveryCustomers.push(c); state.stats.registered++; state.stats.maxProductionQueue=Math.max(state.stats.maxProductionQueue,state.ticketQueue.length);
+    log(`Comanda #${pad(c.orderNo)} enviada para produção: ${orderText(typed)}. Insumos reservados.`, correct?"good":"warn");
+    state.activeCustomer=state.customerQueue.shift()||null; clearMachine(); render();
+  }
+  function rejectOrder(){
+    if(!state.running){log("Inicie o ciclo antes de recusar pedidos.","warn"); return}
+    const c=state.activeCustomer; if(!c){log("Nenhum cliente no balcão para recusar.","warn"); return}
+    const missing=stockProblem(c.order); state.stats.refused++;
+    if(missing){ state.stats.stockouts++; state.satisfaction=clamp(state.satisfaction-1,0,100); log(`Pedido #${pad(c.orderNo)} recusado por falta de ${STOCK_NAMES[missing].toLowerCase()}. Melhor recusar do que prometer e falhar.`,"warn") }
+    else { state.satisfaction=clamp(state.satisfaction-5,0,100); log(`Pedido #${pad(c.orderNo)} recusado mesmo havendo insumos disponíveis.`,"bad") }
+    state.activeCustomer=state.customerQueue.shift()||null; clearMachine(); render();
+  }
+  function sameOrder(a,b){return a.pastel===b.pastel && !!a.drink===!!b.drink}
+  function orderRequirements(order){ const req={massa:1,embalagem:1}; req[order.pastel]=(req[order.pastel]||0)+1; if(order.drink) req.bebida=1; return req }
+  function availableStock(key){ return Math.max(0,(state.stock[key]||0)-(state.reserved[key]||0)) }
+  function stockProblem(order){ const req=orderRequirements(order); for(const k of Object.keys(req)){ if(availableStock(k)<req[k]) return k } return null }
+  function reservationProblem(order){ const req=orderRequirements(order); for(const k of Object.keys(req)){ if((state.reserved[k]||0)<req[k]) return k } return null }
+  function reserveOrder(order){ const req=orderRequirements(order); Object.keys(req).forEach(k=>state.reserved[k]=(state.reserved[k]||0)+req[k]) }
+  function releaseOrder(order){ const req=orderRequirements(order); Object.keys(req).forEach(k=>state.reserved[k]=Math.max(0,(state.reserved[k]||0)-req[k])) }
+  function startFrying(ticketId){
+    if(!state.running) return;
+    const free=state.fryerSlots.findIndex(s=>s===null); if(free<0){log("Fritadeira cheia. A comanda ficará aguardando.","warn"); return}
+    const idx=state.ticketQueue.findIndex(t=>t.id===ticketId); if(idx<0) return;
+    const ticket=state.ticketQueue[idx]; const missing=reservationProblem(ticket.order);
+    if(missing){state.satisfaction=clamp(state.satisfaction-3,0,100); log(`Não foi possível iniciar a comanda #${pad(ticket.orderNo)}: reserva insuficiente de ${STOCK_NAMES[missing].toLowerCase()}.`,"bad"); return}
+    state.ticketQueue.splice(idx,1);
+    consumeStock(ticket.order);
+    const speedFactor=(state.employees>2 ? .90 : 1) * (state.trained ? .90 : 1);
+    ticket.duration=Math.max(8,Math.round(FRY_SECONDS*speedFactor*(state.eventSpeedFactor||1))); ticket.startedAt=Date.now(); ticket.status="fritando";
+    state.fryerSlots[free]=ticket; log(`Fritura iniciada: #${pad(ticket.orderNo)} ${orderText(ticket.order)} (${ticket.duration}s).`,"good"); render();
+  }
+  function consumeStock(order){
+    state.reserved.massa=Math.max(0,state.reserved.massa-1); state.reserved[order.pastel]=Math.max(0,state.reserved[order.pastel]-1); state.reserved.embalagem=Math.max(0,state.reserved.embalagem-1); state.stock.massa--; state.stock[order.pastel]--; state.stock.embalagem--; state.stats.consumed.massa++; state.stats.consumed[order.pastel]++; state.stats.consumed.embalagem++; state.stats.variableCost += COSTS.massa + COSTS[order.pastel] + COSTS.embalagem;
+    if(order.drink){state.reserved.bebida=Math.max(0,state.reserved.bebida-1); state.stock.bebida--; state.stats.consumed.bebida++; state.stats.variableCost += COSTS.bebida}
+  }
+  function updateFryers(){
+    const now=Date.now();
+    for(let i=0;i<state.fryerSlots.length;i++){
+      const t=state.fryerSlots[i]; if(!t) continue;
+      if((now-t.startedAt)/1000>=t.duration){state.fryerSlots[i]=null; t.status="pronto"; t.readyAt=Date.now(); state.readyOrders.push(t); state.stats.readyMade++; state.stats.maxReadyQueue=Math.max(state.stats.maxReadyQueue,state.readyOrders.length); log(`Pedido pronto no balcão: #${pad(t.orderNo)} ${orderText(t.order)}.`,"good"); maybeAssistantDeliver(t)}
+    }
+  }
+  function maybeAssistantDeliver(ticket){
+    if((state.deliveryAssistants||0)<=0) return;
+    state.assistantCounter++;
+    const shouldDeliver = state.deliveryAssistants>=2 ? (state.assistantCounter % 3 !== 1) : (state.assistantCounter % 2 === 0);
+    if(shouldDeliver){
+      ticket.assistantPlanned=true;
+      log(`Auxiliar assumiu a entrega automática da comanda #${pad(ticket.orderNo)}.`,"good");
+      setTimeout(()=>autoDeliver(ticket.id),1300);
+    }
+  }
+  function autoDeliver(ticketId){ if(state.running || true){ const t=state.readyOrders.find(x=>x.id===ticketId); if(t) deliver(ticketId,t.customerId,true); } }
+  function deliver(ticketId,customerId,auto=false){
+    const tIdx=state.readyOrders.findIndex(t=>t.id===Number(ticketId)); if(tIdx<0) return;
+    const cIdx=state.deliveryCustomers.findIndex(c=>c.id===Number(customerId)); if(cIdx<0) return;
+    const ticket=state.readyOrders[tIdx], customer=state.deliveryCustomers[cIdx];
+    const profile=priceProfile();
+    if(ticket.customerId!==customer.id){state.stats.errors++; state.satisfaction=clamp(state.satisfaction-Math.round(8*profile.errorPenaltyMult),0,100); customer.mood="😠"; log(`Entrega errada: #${pad(ticket.orderNo)} era do cliente ${ticket.customerColor}, não do cliente ${customer.color}.`,"bad"); render(); return}
+    state.readyOrders.splice(tIdx,1); state.deliveryCustomers.splice(cIdx,1); selectedReadyId=null;
+    const wait=(Date.now()-customer.bornAt)/1000; const readyWait=(Date.now()-(ticket.readyAt||Date.now()))/1000; state.stats.totalWait+=wait; state.stats.readyWaitTotal+=readyWait;
+    let revenue = Number((ticket.salePrice&&ticket.salePrice.pastel) ?? PASTELS[ticket.order.pastel].price) + (ticket.order.drink?Number((ticket.salePrice&&ticket.salePrice.drink) ?? DRINK.price):0);
+    state.cash += revenue; state.stats.revenue += revenue; state.stats.served++; state.stats.sold[ticket.order.pastel]++; if(ticket.order.drink) state.stats.sold.bebida++;
+    if(auto) state.stats.autoDelivered++; else state.stats.manualDelivered++;
+    if(!ticket.correctlyRegistered){state.satisfaction=clamp(state.satisfaction-Math.round(10*profile.errorPenaltyMult),0,100); log(`Cliente ${customer.color} recebeu a comanda #${pad(ticket.orderNo)}, mas o pedido estava diferente do solicitado.`,"bad")}
+    else { let bonus; if(profile.tier==="barato") bonus=wait<=60?2:wait<=95?0:wait<=130?-4:-6; else if(profile.tier==="medio") bonus=wait<=60?4:wait<=95?2:wait<=130?-3:-8; else bonus=wait<=45?2:wait<=75?-2:wait<=110?-7:-12; state.satisfaction=clamp(state.satisfaction+bonus,0,100); log(`${auto?"Auxiliar entregou":"Entrega correta"}: #${pad(ticket.orderNo)} para cliente ${customer.color}. Receita ${fmtMoney(revenue)}.`,"good") }
+    render();
+  }
+  function updatePatience(){
+    const now=Date.now();
+    if(state.activeCustomer && (now-state.activeCustomer.bornAt)/1000>state.activeCustomer.patience) loseCustomer(state.activeCustomer,"espera no balcão");
+    state.customerQueue.slice().forEach(c=>{ if((now-c.bornAt)/1000>c.patience) loseCustomer(c,"fila de atendimento") });
+    state.deliveryCustomers.slice().forEach(c=>{ if((now-c.bornAt)/1000>c.patience+45) loseCustomer(c,"demora na entrega") });
+  }
+  function loseCustomer(c,reason){
+    state.stats.lost++; state.satisfaction=clamp(state.satisfaction-priceProfile().lostPenalty,0,100); log(`Cliente ${c.color} da comanda #${pad(c.orderNo)} desistiu: ${reason}.`,"bad");
+    if(state.activeCustomer && state.activeCustomer.id===c.id) state.activeCustomer=state.customerQueue.shift()||null;
+    state.customerQueue=state.customerQueue.filter(x=>x.id!==c.id); state.deliveryCustomers=state.deliveryCustomers.filter(x=>x.id!==c.id); removeCustomerOrders(c.id,true);
+  }
+  function removeCustomerOrders(customerId,countWaste){
+    state.ticketQueue=state.ticketQueue.filter(t=>{ if(t.customerId===customerId){ releaseOrder(t.order); return false } return true });
+    state.readyOrders=state.readyOrders.filter(t=>{ if(t.customerId===customerId && countWaste) state.stats.wasteCost+=variableCostFor(t.order); return t.customerId!==customerId });
+    state.fryerSlots=state.fryerSlots.map(t=>{ if(t && t.customerId===customerId){ if(countWaste) state.stats.wasteCost+=variableCostFor(t.order); return null } return t });
+  }
+  function variableCostFor(order){ return COSTS.massa + COSTS[order.pastel] + COSTS.embalagem + (order.drink?COSTS.bebida:0) }
+  function endCycle(){
+    if(!state.running) return;
+    state.running=false; clearInterval(cycleTimer); clearInterval(renderTimer); $("startBtn").disabled=false; $("endBtn").disabled=true;
+    const uniquePending=new Set(); if(state.activeCustomer) uniquePending.add(state.activeCustomer.id); state.customerQueue.forEach(c=>uniquePending.add(c.id)); state.deliveryCustomers.forEach(c=>uniquePending.add(c.id));
+    state.stats.lost += uniquePending.size; if(uniquePending.size) state.satisfaction=clamp(state.satisfaction-uniquePending.size*6,0,100);
+    state.deliveryCustomers.slice().forEach(c=>removeCustomerOrders(c.id,true));
+    state.ticketQueue.forEach(t=>releaseOrder(t.order));
+    state.ticketQueue=[]; state.readyOrders=[]; state.fryerSlots=state.fryerSlots.map(()=>null); state.activeCustomer=null; state.customerQueue=[]; state.deliveryCustomers=[]; state.reserved=zeroStock();
+    applySpoilage();
+    const fixed = COSTS.fixedBase + state.employees*COSTS.employeeCycle + (state.deliveryAssistants||0)*COSTS.deliveryAssistantCycle + Math.max(0,state.fryerCapacity-4)*2;
+    state.stats.fixedCost=fixed; state.cash -= fixed;
+    const speedFactor=(state.employees>2 ? .90 : 1) * (state.trained ? .90 : 1) * (state.eventSpeedFactor||1);
+    const nominal=Math.floor(CYCLE_SECONDS/FRY_SECONDS)*state.fryerCapacity;
+    const effective=Math.max(1,Math.floor(CYCLE_SECONDS/(FRY_SECONDS*speedFactor))*state.fryerCapacity);
+    state.stats.nominalCapacity=nominal; state.stats.effectiveCapacity=effective;
+    state.stats.utilization=Math.min(100,(state.stats.served/nominal)*100);
+    state.stats.efficiency=Math.min(100,(state.stats.served/effective)*100);
+    state.stats.idleCapacity=Math.max(0,effective-state.stats.served);
+    state.stats.serviceLevel=state.stats.arrived?Math.min(100,(state.stats.served/state.stats.arrived)*100):100;
+    const report=buildReport(); state.history.push(report);
+    const wasSunday=dayIndex()===6; state.cycle++; if(wasSunday) state.weekScale=(.92+Math.random()*.16);
+    if($("forecastInput")) $("forecastInput").value=""; showReport(report); render(); log(`${report.day} encerrado. Custos fixos debitados: ${fmtMoney(fixed)}.`,"warn");
+  }
+  function applySpoilage(){
+    PERISHABLE.forEach(k=>{
+      if(state.stock[k] > state.capacity[k]*.80){
+        const q=Math.max(1,Math.ceil(state.stock[k]*.20)); state.stock[k]-=q; const cost=q*COSTS[k]; state.stats.wasteCost+=cost; state.stats.spoilage[k]=q; log(`Desperdício: ${q} unidade(s) de ${STOCK_NAMES[k].toLowerCase()} estragaram por excesso de estoque.`,"bad");
+      }
+    })
+  }
+  function updateBottleneck(){
+    const fryerBusy=state.fryerSlots.filter(Boolean).length/Math.max(1,state.fryerSlots.length);
+    if(state.readyOrders.length>=3) state.stats.bottleneck="Entrega / balcão com bandejas acumuladas";
+    else if(state.ticketQueue.length>=4 || fryerBusy>.85) state.stats.bottleneck="Fritura / capacidade de produção";
+    else if((state.activeCustomer?1:0)+state.customerQueue.length>=4) state.stats.bottleneck="Atendimento / fila de clientes";
+    else if(hasCriticalStock()) state.stats.bottleneck="Estoque / risco de ruptura";
+    else state.stats.bottleneck="Operação equilibrada";
+  }
+  function hasCriticalStock(){ return Object.keys(state.stock).some(k=>state.stock[k]<=Math.max(2,Math.floor(state.capacity[k]*.15))) }
+  function buildReport(){
+    const avgWait=state.stats.served?state.stats.totalWait/state.stats.served:0, avgReady=state.stats.readyMade?state.stats.readyWaitTotal/Math.max(1,state.stats.served):0;
+    const totalCosts=state.stats.variableCost+state.stats.fixedCost+state.stats.wasteCost;
+    const preTaxResult=state.stats.revenue-totalCosts-state.stats.cycleInvestment;
+    const projectedTax=preTaxResult>0?preTaxResult*.20:0;
+    const netProjected=preTaxResult-projectedTax;
+    const operationalProfit=preTaxResult;
+    const diversity=["carne","frango","queijo"].filter(k=>state.stats.sold[k]>0).length;
+    const performance={
+      custo:clamp(Math.round(70 + preTaxResult/6 - state.stats.wasteCost*.55),0,100),
+      rapidez:clamp(Math.round(100 - avgWait*.55 - state.stats.maxReadyQueue*5 - state.stats.lost*4),0,100),
+      confiabilidade:clamp(Math.round(100 - state.stats.errors*12 - state.stats.refused*4 - state.stats.lost*3),0,100),
+      qualidade:clamp(Math.round(state.satisfaction),0,100),
+      flexibilidade:clamp(Math.round(55 + diversity*10 + state.stats.served*1.4 - state.stats.stockouts*8 - state.stats.refused*3),0,100)
+    };
+    const score=clamp(Math.round(preTaxResult/8 + state.satisfaction*.45 + state.stats.served*2 - state.stats.lost*4 - state.stats.errors*3),0,100);
+    return {cycle:state.cycle,week:weekNumber(),day:currentDayName(),dayIndex:dayIndex(),forecast:state.stats.forecast,demandTarget:state.stats.demandTarget,forecastError:state.stats.forecast!=null?state.stats.arrived-state.stats.forecast:null,forecastAbsError:state.stats.forecast!=null?Math.abs(state.stats.arrived-state.stats.forecast):null,forecastPctError:(state.stats.forecast!=null&&state.stats.arrived>0)?Math.abs(state.stats.arrived-state.stats.forecast)/state.stats.arrived*100:null,nominalCapacity:state.stats.nominalCapacity,effectiveCapacity:state.stats.effectiveCapacity,utilization:state.stats.utilization,efficiency:state.stats.efficiency,idleCapacity:state.stats.idleCapacity,serviceLevel:state.stats.serviceLevel,shopName:state.shopName||"Pastelaria do Vale",pastelPrice:(state.pastelPrice ?? 10),drinkPrice:(DRINK.price ?? 6),priceTier:priceProfile().label,performanceFocus:state.performanceFocus||"custo",performance,event:state.stats.eventName,eventDesc:state.stats.eventDescription,arrived:state.stats.arrived,registered:state.stats.registered,refused:state.stats.refused,stockouts:state.stats.stockouts,served:state.stats.served,lost:state.stats.lost,errors:state.stats.errors,manualDelivered:state.stats.manualDelivered,autoDelivered:state.stats.autoDelivered,revenue:state.stats.revenue,variableCost:state.stats.variableCost,fixedCost:state.stats.fixedCost,wasteCost:state.stats.wasteCost,totalCosts,cycleInvestment:state.stats.cycleInvestment,preTaxResult,projectedTax,netProjected,operationalProfit,cash:state.cash,satisfaction:state.satisfaction,avgWait,avgReady,maxCustomerQueue:state.stats.maxCustomerQueue,maxProductionQueue:state.stats.maxProductionQueue,maxReadyQueue:state.stats.maxReadyQueue,bottleneck:state.stats.bottleneck,sold:copy(state.stats.sold),consumed:copy(state.stats.consumed),stock:copy(state.stock),reserved:copy(state.reserved),capacity:copy(state.capacity),spoilage:copy(state.stats.spoilage),score};
+  }
+  function generateContinuationCode(){
+    const safeState=copy(state);
+    safeState.running=false;
+    safeState.remaining=CYCLE_SECONDS;
+    safeState.activeCustomer=null; safeState.customerQueue=[]; safeState.deliveryCustomers=[]; safeState.ticketQueue=[]; safeState.readyOrders=[]; safeState.fryerSlots=[]; safeState.reserved=zeroStock();
+    safeState.history=(safeState.history||[]).map(item=>{ const x=copy(item); delete x.continuationCode; return x; });
+    const payload={app:"pastelaria-operacao",version:2,savedAt:new Date().toISOString(),state:safeState};
+    return "PASTELARIA-" + btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+  }
+  function decodeContinuationCode(code){
+    const clean=String(code||"").trim().replace(/^PASTELARIA-/i,"");
+    const payload=JSON.parse(decodeURIComponent(escape(atob(clean))));
+    if(!payload || payload.app!=="pastelaria-operacao" || !payload.state) throw new Error("Código de continuação inválido.");
+    return payload.state;
+  }
+  function updateContinuationCodeDisplay(){
+    const code=generateContinuationCode();
+    if($("continuationCodeBox")) $("continuationCodeBox").value=code;
+    if(currentReport) currentReport.continuationCode=code;
+    return code;
+  }
+  function csvCell(v){ return `"${String(v ?? "").replace(/"/g,'""')}"`; }
+  function triggerCsvDownload(filename, csv){
+    const content="\ufeff"+csv;
+    try{
+      const blob=new Blob([content],{type:"text/csv;charset=utf-8;"});
+      if(window.navigator && window.navigator.msSaveOrOpenBlob){ window.navigator.msSaveOrOpenBlob(blob, filename); return true; }
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement("a");
+      a.href=url; a.download=filename; a.style.display="none";
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(()=>{ try{ document.body.removeChild(a); URL.revokeObjectURL(url); }catch(e){} },250);
+      return true;
+    }catch(e){
+      try{
+        const a=document.createElement("a");
+        a.href="data:text/csv;charset=utf-8,"+encodeURIComponent(content);
+        a.download=filename; a.style.display="none";
+        document.body.appendChild(a); a.click();
+        setTimeout(()=>{ try{ document.body.removeChild(a); }catch(err){} },250);
+        return true;
+      }catch(err){ return false; }
+    }
+  }
+  function downloadContinuationCSV(){
+    const code=updateContinuationCodeDisplay();
+    const rows=[
+      ["simulador","pastelaria-operacao"],
+      ["ciclo_proximo",state.cycle],
+      ["pastelaria",state.shopName||"Pastelaria do Vale"],
+      ["gerado_em",new Date().toLocaleString("pt-BR")],
+      ["codigo_continuacao",code]
+    ];
+    const csv=rows.map(r=>r.map(csvCell).join(";")).join("\n");
+    const ok=triggerCsvDownload(`codigo-continuacao-pastelaria-ciclo-${state.cycle}.csv`, csv);
+    if(!ok){
+      const box=$("continuationCodeBox");
+      if(box){ box.focus(); box.select(); }
+      alert("Não foi possível baixar o CSV neste navegador. O código foi selecionado na tela para copiar manualmente.");
+    }
+  }
+  function loadContinuationCode(){
+    try{
+      const loaded=decodeContinuationCode($("continuationInput").value);
+      clearInterval(cycleTimer); clearInterval(renderTimer);
+      state=loaded;
+      state.running=false; state.remaining=CYCLE_SECONDS;
+      state.activeCustomer=null; state.customerQueue=[]; state.deliveryCustomers=[]; state.ticketQueue=[]; state.readyOrders=[]; state.reserved=zeroStock();
+      state.stock=state.stock||copy(INITIAL_CAPACITY); state.capacity=state.capacity||copy(INITIAL_CAPACITY); state.history=state.history||[]; state.simulatedHistory=state.simulatedHistory||generatePriorHistory(); state.weekScale=state.weekScale||(.92+Math.random()*.16); state.eventSpeedFactor=1; state.logs=state.logs||[]; state.stats=state.stats||freshStats();
+      state.drinkPrice=normalizeDrinkPrice((state.drinkPrice ?? 6)); state.pastelPrice=normalizePrice((state.pastelPrice ?? 10));
+      syncPastelPrices(); setupFryers(); updatePriceTexts(); closeModals(); $("startModal").classList.remove("show");
+      if($("shopNameInput")) $("shopNameInput").value=state.shopName||"Pastelaria do Vale";
+      if($("performanceFocusInput")) $("performanceFocusInput").value=state.performanceFocus||"custo";
+      log(`Jogo continuado. Próximo dia: ${currentDayName()} — Semana ${weekNumber()}.`,"good");
+      render();
+    }catch(e){ if($("loadGameMsg")) $("loadGameMsg").textContent="Não foi possível carregar. Confira se o código foi copiado integralmente."; }
+  }
+
+  function showReport(r){
+    $("reportTitle").textContent=`Relatório do dia ${r.cycle} — ${r.shopName}`; $("eventText").textContent=`Evento do ciclo: ${r.event} — ${r.eventDesc}`;
+    const items=[["Dia",`${r.day} — Semana ${r.week}`],["Previsão do aluno",r.forecast ?? "—"],["Demanda observada",r.arrived],["Erro absoluto",r.forecastAbsError ?? "—"],["Erro percentual",r.forecastPctError!=null?`${r.forecastPctError.toFixed(1)}%`:"—"],["Capacidade nominal",r.nominalCapacity],["Capacidade efetiva",r.effectiveCapacity],["Capacidade realizada",r.served],["Utilização",`${r.utilization.toFixed(1)}%`],["Eficiência",`${r.efficiency.toFixed(1)}%`],["Capacidade ociosa",r.idleCapacity],["Nível de serviço",`${r.serviceLevel.toFixed(1)}%`],["Clientes que chegaram",r.arrived],["Pedidos registrados",r.registered],["Pedidos recusados",r.refused],["Preço do pastel",fmtMoney(r.pastelPrice)],["Preço do refrigerante/suco",fmtMoney((r.drinkPrice ?? 6))],["Estratégia de preço",r.priceTier],["Prioridade operacional",PERFORMANCE_LABELS[r.performanceFocus]||"Custo"],["Clientes atendidos",r.served],["Clientes perdidos",r.lost],["Entregas manuais",r.manualDelivered],["Entregas do auxiliar",r.autoDelivered],["Erros",r.errors],["Receita",fmtMoney(r.revenue)],["(-) Custos operacionais",fmtMoney(r.totalCosts)],["(-) Investimentos",fmtMoney(r.cycleInvestment)],["Resultado antes dos impostos",fmtMoney(r.preTaxResult)],["(-) Impostos projetados 20%",fmtMoney(r.projectedTax)],["Lucro líquido projetado",fmtMoney(r.netProjected)],["Caixa final do jogo",fmtMoney(r.cash)],["Espera média",`${Math.round(r.avgWait)}s`],["Satisfação",`${Math.round(r.satisfaction)}/100`],["Pontuação",`${r.score}/100`]];
+    $("reportGrid").innerHTML=items.map(([l,v])=>`<div class="report-item"><div class="label">${l}</div><div class="value">${v}</div></div>`).join("");
+    $("diagnosticText").innerHTML=diagnosticHTML(r)+(r.dayIndex===6?weeklySummaryHTML(r.week):""); currentReport=r; r.continuationCode=generateContinuationCode(); document.querySelectorAll(".continuation-code-panel").forEach(el=>el.remove()); $("diagnosticText").insertAdjacentHTML("afterend", `<div class="panel continuation-code-panel" style="margin-top:12px"><h2>Código de Continuação da Simulação</h2><div class="tiny">Guarde este código para continuar o jogo em outro momento. Este código fica apenas na tela e não aparece no relatório em PDF.</div><textarea id="continuationCodeBox" readonly style="width:100%;min-height:92px;margin-top:8px;border:3px solid var(--dark);border-radius:8px;padding:8px;font-family:'Courier New',monospace">${r.continuationCode}</textarea><div class="btn-row"><button onclick="navigator.clipboard&&navigator.clipboard.writeText(document.getElementById('continuationCodeBox').value)">Copiar código</button><button type="button" id="downloadCodeCsvBtn" class="btn-blue">Baixar código em CSV</button></div></div>`); $("printArea").innerHTML=printReportHTML(r); $("reportModal").classList.add("show"); buildPricing(); buildPurchases(); buildUpgrades();
+  }
+  function weeklySummaryHTML(week){
+    const rs=(state.history||[]).filter(x=>x.week===week); if(!rs.length) return "";
+    const sum=k=>rs.reduce((a,x)=>a+(Number(x[k])||0),0);
+    const avg=k=>rs.length?sum(k)/rs.length:0;
+    const bottlenecks={}; rs.forEach(x=>bottlenecks[x.bottleneck]=(bottlenecks[x.bottleneck]||0)+1);
+    const main=Object.entries(bottlenecks).sort((a,b)=>b[1]-a[1])[0];
+    return `<div class="panel" style="margin-top:12px"><h2>Relatório gerencial da Semana ${week}</h2><p><b>Demanda total:</b> ${sum("arrived")} | <b>Atendidos:</b> ${sum("served")} | <b>Perdidos:</b> ${sum("lost")}</p><p><b>Utilização média:</b> ${avg("utilization").toFixed(1)}% | <b>Eficiência média:</b> ${avg("efficiency").toFixed(1)}% | <b>Nível de serviço médio:</b> ${avg("serviceLevel").toFixed(1)}%</p><p><b>Receita:</b> ${fmtMoney(sum("revenue"))} | <b>Desperdício:</b> ${fmtMoney(sum("wasteCost"))} | <b>Gargalo predominante:</b> ${main?main[0]:"—"}</p><p class="tiny">Use os resultados desta semana para revisar previsão, estoque e capacidade da próxima semana.</p></div>`;
+  }
+  function performanceHTML(r){
+    const entries=Object.entries(r.performance||{}); if(!entries.length) return "";
+    const sorted=[...entries].sort((a,b)=>b[1]-a[1]); const best=sorted[0], worst=sorted[sorted.length-1];
+    const list=entries.map(([k,v])=>`<li><b>${PERFORMANCE_LABELS[k]}:</b> ${v}/100</li>`).join("");
+    return `<p><b>Leitura pelos objetivos de desempenho:</b> prioridade escolhida: <b>${PERFORMANCE_LABELS[r.performanceFocus]||"Custo"}</b>. Melhor desempenho: <b>${PERFORMANCE_LABELS[best[0]]}</b> (${best[1]}/100). Ponto crítico: <b>${PERFORMANCE_LABELS[worst[0]]}</b> (${worst[1]}/100).</p><ul>${list}</ul>`;
+  }
+  function diagnosticHTML(r){
+    const most = mostSoldPastel(r.sold); const stockMsgs = stockRecommendations(r,false).slice(0,6).map(x=>`<li><b>${STOCK_NAMES[x.key]}:</b> ${x.message}</li>`).join(""); const priceMsg = priceProfile(r.pastelPrice).message;
+    const spoilMsgs = Object.keys(r.spoilage).length ? `<p><b>Desperdício:</b> ${Object.entries(r.spoilage).map(([k,q])=>`${q} de ${STOCK_NAMES[k]}`).join(", ")}. Comprar demais gerou perda de 20% do estoque excedente/alto.</p>` : `<p><b>Desperdício:</b> não houve perda por excesso de estoque neste dia.</p>`;
+    const taxMsg = `<p><b>Ordem contábil-gerencial:</b> Receita ${fmtMoney(r.revenue)} − custos ${fmtMoney(r.totalCosts)} − investimentos ${fmtMoney(r.cycleInvestment)} = resultado antes dos impostos ${fmtMoney(r.preTaxResult)}. O imposto de 20% é apenas projeção relatorial e não reduz o caixa do jogo.</p>`;
+    return `${taxMsg}${performanceHTML(r)}<p><b>Gargalo identificado:</b> ${r.bottleneck}.</p><p><b>Preço:</b> ${fmtMoney(r.pastelPrice)} — ${priceMsg}</p><p><b>Sabor mais vendido:</b> ${most ? PASTELS[most].label : "sem vendas"}. Se o caixa estiver limitado, priorize massa, embalagem e o recheio com maior saída.</p>${spoilMsgs}<p><b>Recomendações de reposição:</b></p><ul>${stockMsgs}</ul>`;
+  }
+  function printReportHTML(r){
+    const rows=[
+      ["Evento",`${r.event} — ${r.eventDesc}`],["Clientes que chegaram",r.arrived],["Pedidos registrados",r.registered],["Pedidos recusados",r.refused],["Preço do pastel",fmtMoney(r.pastelPrice)],["Preço do refrigerante/suco",fmtMoney((r.drinkPrice ?? 6))],["Estratégia de preço",r.priceTier],["Prioridade operacional",PERFORMANCE_LABELS[r.performanceFocus]||"Custo"],["Clientes atendidos",r.served],["Clientes perdidos",r.lost],["Entregas manuais",r.manualDelivered],["Entregas do auxiliar",r.autoDelivered],["Erros",r.errors],["Receita",fmtMoney(r.revenue)],["(-) Custos operacionais",fmtMoney(r.totalCosts)],["(-) Investimentos",fmtMoney(r.cycleInvestment)],["Resultado antes dos impostos",fmtMoney(r.preTaxResult)],["(-) Impostos projetados — 20%",fmtMoney(r.projectedTax)],["Lucro líquido projetado",fmtMoney(r.netProjected)],["Caixa final do jogo",fmtMoney(r.cash)],["Espera média",`${Math.round(r.avgWait)}s`],["Satisfação",`${Math.round(r.satisfaction)}/100`],["Gargalo",r.bottleneck],["Pontuação",`${r.score}/100`]
+    ];
+    const stockRows=Object.keys(r.stock).map(k=>`<tr><td>${STOCK_NAMES[k]}</td><td>${r.consumed[k]||0}</td><td>${r.stock[k]}/${r.capacity[k]}</td><td>${r.reserved && r.reserved[k] ? r.reserved[k] : 0}</td><td>${r.spoilage[k]||0}</td></tr>`).join("");
+    return `<h1>${r.shopName} — Relatório do dia ${r.cycle}</h1><div class="small">Pastelaria em Operação — Sistema desenvolvido para a disciplina Gestão de Operações e Serviços, Professor Me. Luan Sodré da UNIVALE.</div><h2>Demonstração gerencial do ciclo</h2><table><tbody>${rows.map(([a,b])=>`<tr><th>${a}</th><td>${b}</td></tr>`).join("")}</tbody></table><h2>Estoque, consumo e desperdício</h2><table><thead><tr><th>Item</th><th>Consumido</th><th>Estoque final / capacidade</th><th>Reservado</th><th>Desperdício</th></tr></thead><tbody>${stockRows}</tbody></table><h2>Diagnóstico gerencial</h2>${diagnosticHTML(r)}<div class="small">Sugestão de uso: peça que os alunos justifiquem quais compras e melhorias fariam antes do próximo dia.</div>`;
+  }
+  function printReport(){ if(!currentReport) return; $("printArea").innerHTML=printReportHTML(currentReport); window.print(); }
+  function mostSoldPastel(sold){ let best=null, val=0; ["carne","frango","queijo"].forEach(k=>{if(sold[k]>val){best=k;val=sold[k]}}); return best }
+  function stockRecommendations(r, live=true){
+    const stockSource = live ? state.stock : (r.stock||state.stock);
+    const capSource = live ? state.capacity : (r.capacity||state.capacity);
+    const reservedSource = live ? (state.reserved||{}) : (r.reserved||{});
+    const most=mostSoldPastel(r.sold); return Object.keys(stockSource).map(k=>{
+      const current=stockSource[k], cap=capSource[k], used=r.consumed[k]||0, reserved=reservedSource[k]||0, available=Math.max(0,current-reserved); let priority="low", suggested=0, message="estoque confortável.";
+      if(available===0){priority="high"; suggested=Math.min(cap-current,15); message=`ruptura ou itens totalmente reservados. Repor com urgência até o limite de capacidade.`}
+      else if(available<=cap*.25){priority="high"; suggested=Math.min(cap-current,Math.max(8,used)); message=`nível crítico: ${available} disponível(is), ${reserved} reservado(s). Comprar pelo menos ${suggested}.`}
+      else if(available<=cap*.45){priority="medium"; suggested=Math.min(cap-current,Math.max(5,Math.ceil(used*.6))); message=`atenção: ${available} disponível(is), ${reserved} reservado(s). Considere comprar ${suggested}.`}
+      if(k===most || (k==="massa"&&used>0) || (k==="embalagem"&&used>0)) priority = priority==="low" ? "medium" : priority;
+      if(k===most && suggested===0 && current<cap) {suggested=Math.min(cap-current,5); message=`foi o item de maior saída. Se houver caixa, reforçar ${suggested}.`}
+      return {key:k,current,cap,used,reserved,available,priority,suggested,message};
+    }).sort((a,b)=>({high:3,medium:2,low:1}[b.priority]-({high:3,medium:2,low:1}[a.priority])));
+  }
+
+  function buildPricing(){
+    updatePriceTexts();
+  }
+  function buildPurchases(){
+    if(currentReport) updateContinuationCodeDisplay();
+    $("cashBanner").textContent=`CAIXA DISPONÍVEL: ${fmtMoney(state.cash)}`;
+    const recs=stockRecommendations(state.history[state.history.length-1] || buildReport(), true);
+    $("stockBuyGrid").innerHTML=recs.map(r=>{
+      const max=Math.max(0,r.cap-r.current); const totalSug=Math.min(max,r.suggested||0); const cls=r.priority==="high"?"priority-high":r.priority==="medium"?"priority-medium":"priority-low";
+      return `<div class="buy-card ${cls}"><h3>${STOCK_NAMES[r.key]}</h3><p>Estoque físico: <b>${r.current}/${r.cap}</b><br>Disponível: <b>${r.available}</b> | Reservado: <b>${r.reserved}</b><br>Consumido no ciclo: <b>${r.used}</b><br>Custo unitário: <b>${fmtMoney(COSTS[r.key])}</b><br>Prioridade: <b>${r.priority.toUpperCase()}</b><br>${r.message}</p><div class="buy-controls"><input id="qty-${r.key}" type="number" min="0" max="${max}" value="${totalSug}" oninput="window.__pastelaria.updateBuyPreview('${r.key}')"><button onclick="window.__pastelaria.buyStock('${r.key}')">Comprar</button></div><div class="cost-preview" id="preview-${r.key}"></div><div class="tiny">Máximo possível agora: ${max}. ${r.current>r.cap*.70?"Cuidado com desperdício se sobrar muito.":""}</div></div>`;
+    }).join("");
+    recs.forEach(r=>updateBuyPreview(r.key));
+  }
+  function buildUpgrades(){
+    if(currentReport) updateContinuationCodeDisplay();
+    $("cashBanner").textContent=`CAIXA DISPONÍVEL: ${fmtMoney(state.cash)}`;
+    const ups=[
+      {title:"Ampliar estoque",cost:COSTS.storage,desc:"Aumenta em 20% a capacidade máxima de armazenamento de todos os itens. Faça isso antes de comprar acima do limite atual.",fn:"expandStorage",disabled:false},
+      {title:"+1 espaço na fritadeira",cost:COSTS.fryer,desc:"Libera apenas 1 espaço extra de fritura. Capacidade máxima: 8 pastéis simultâneos.",fn:"buyFryer",disabled:state.fryerCapacity>=8},
+      {title:"Contratar funcionário",cost:COSTS.employeeHire,desc:`Custo de contratação. Reduz o tempo de fritura/preparo em 10%. Equipe: ${state.employees}/4.`,fn:"hireEmployee",disabled:state.employees>=4},
+      {title:"Contratar ajudante de entrega",cost:COSTS.deliveryAssistantHire,desc:`Entrega automaticamente parte dos pedidos prontos, sempre ao cliente correto. Ajudantes: ${state.deliveryAssistants||0}/2.`,fn:"hireDeliveryAssistant",disabled:(state.deliveryAssistants||0)>=2},
+      {title:"Treinar equipe",cost:COSTS.training,desc:"Reduz erros e acelera a produção em 10%.",fn:"trainTeam",disabled:state.trained},
+      {title:"Divulgação",cost:40,desc:"Aumenta a demanda no próximo dia. Use apenas se a capacidade conseguir acompanhar.",fn:"advertise",disabled:false},
+      {title:"Comprar reposição sugerida",cost:0,desc:"Compra automaticamente os itens críticos, respeitando o caixa e a capacidade de estoque.",fn:"buySuggested",disabled:false}
+    ];
+    $("upgradeGrid").innerHTML=ups.map(u=>`<div class="upgrade"><h3>${u.title}</h3><p>${u.desc}</p><div class="label">Saldo</div><div class="value">${u.cost ? (state.cash>=u.cost ? "Disponível" : "Insuficiente") : "conforme estoque"}</div><div class="tiny">${u.cost?`Valor: ${fmtMoney(u.cost)}`:""}</div><button ${u.disabled|| (u.cost && state.cash<u.cost) ? "disabled":""} onclick="window.__pastelaria.${u.fn}()">${u.disabled?"Já aplicado":(u.cost && state.cash<u.cost?"Saldo insuficiente":"Selecionar")}</button></div>`).join("");
+  }
+  function spend(amount){ if(state.cash<amount){log(`Caixa insuficiente. Faltam ${fmtMoney(amount-state.cash)}.`,"bad"); return false} state.cash-=amount; state.pendingInvestment+=amount; return true }
+  function requireManagerPassword(action="investimento operacional"){
+    const typed = window.prompt(`Autorização gerencial necessária para ${action}. Digite a senha:`);
+    if(typed===null){ log("Investimento cancelado: autorização gerencial não informada.","warn"); return false; }
+    if(String(typed).trim()!=="4321"){ log("Investimento bloqueado: senha gerencial incorreta.","bad"); return false; }
+    log("Autorização gerencial concedida para investimento operacional.","good");
+    return true;
+  }
+  function updateBuyPreview(key){
+    const input=$("qty-"+key), box=$("preview-"+key); if(!input||!box) return;
+    const max=Math.max(0,state.capacity[key]-state.stock[key]);
+    let qty=parseInt(input.value||"0",10); if(!Number.isFinite(qty)||qty<0) qty=0;
+    const qtyByCapacity=Math.min(qty,max);
+    const total=qtyByCapacity*COSTS[key];
+    let alert="";
+    if(qty>max) alert+=`Capacidade limita a ${max}. `;
+    if(total>state.cash) alert+=`Saldo insuficiente para a quantidade escolhida. `;
+    const saldo = total>0 && state.cash>=total ? "disponível" : (qty>0 ? "insuficiente" : "—");
+    box.innerHTML=`Total da compra: <b>${fmtMoney(total)}</b><br>Saldo: <b>${saldo}</b>${alert?`<br><span class="tag warn">${alert}</span>`:""}`;
+  }
+  function buyFryer(){ if(state.fryerCapacity>=8) return; if(!requireManagerPassword("ampliar a capacidade da fritadeira")) return; if(!spend(COSTS.fryer)) return; state.fryerCapacity++; setupFryers(); log("Capacidade da fritadeira ampliada em +1 espaço.","good"); buildUpgrades(); render() }
+  function hireEmployee(){ if(state.employees>=4) return; if(!requireManagerPassword("contratar funcionário")) return; if(!spend(COSTS.employeeHire)) return; state.employees++; log(`Funcionário contratado por ${fmtMoney(COSTS.employeeHire)}. Equipe atual: ${state.employees}/4.`,"good"); buildUpgrades(); render() }
+  function hireDeliveryAssistant(){ if((state.deliveryAssistants||0)>=2) return; if(!requireManagerPassword("contratar ajudante de entrega")) return; if(!spend(COSTS.deliveryAssistantHire)) return; state.deliveryAssistants=(state.deliveryAssistants||0)+1; log(`Ajudante de entrega contratado por ${fmtMoney(COSTS.deliveryAssistantHire)}. Ajudantes: ${state.deliveryAssistants}/2.`,"good"); buildUpgrades(); render() }
+  function trainTeam(){ if(state.trained) return; if(!requireManagerPassword("treinar equipe")) return; if(!spend(COSTS.training)) return; state.trained=true; log("Equipe treinada.","good"); buildUpgrades(); render() }
+  function improveLayout(){ if(state.layoutImproved) return; if(!spend(COSTS.layout)) return; state.layoutImproved=true; log("Layout melhorado. Fluxo do balcão mais organizado.","good"); buildUpgrades(); render() }
+  function expandStorage(){ if(!requireManagerPassword("ampliar a capacidade de estoque")) return; if(!spend(COSTS.storage)) return; Object.keys(state.capacity).forEach(k=>{state.capacity[k]+=Math.max(1,Math.ceil(INITIAL_CAPACITY[k]*.20))}); log("Capacidade de estoque ampliada em 20%.","good"); buildPurchases(); buildUpgrades(); render() }
+  function advertise(){ if(!requireManagerPassword("realizar divulgação")) return; if(!spend(40)) return; state.pendingDemandBoost=true; log("Divulgação comprada. Próximo ciclo terá demanda maior.","warn"); buildUpgrades(); render() }
+  function buyStock(key){
+    const input=$("qty-"+key); let qty=clamp(parseInt(input.value||"0",10),0,state.capacity[key]-state.stock[key]); if(qty<=0){log("Informe uma quantidade válida dentro da capacidade do estoque.","warn"); return}
+    const amount=qty*COSTS[key]; if(amount>state.cash){log("Caixa insuficiente para a quantidade escolhida.","bad"); return} if(!spend(amount)) return; state.stock[key]+=qty; log(`Compra realizada: +${qty} ${STOCK_NAMES[key].toLowerCase()} por ${fmtMoney(amount)}.`,"good"); buildPurchases(); buildUpgrades(); render();
+  }
+  function buySuggested(){
+    const last=state.history[state.history.length-1]; if(!last) return; const recs=stockRecommendations(last, true).filter(r=>r.priority!=="low"); let bought=0;
+    for(const r of recs){ const can=Math.min(r.suggested||0,state.capacity[r.key]-state.stock[r.key],Math.floor(state.cash/COSTS[r.key])); if(can>0){ state.cash-=can*COSTS[r.key]; state.pendingInvestment+=can*COSTS[r.key]; state.stock[r.key]+=can; bought+=can; log(`Reposição sugerida: +${can} ${STOCK_NAMES[r.key].toLowerCase()}.`,"good") } }
+    if(!bought) log("Não havia caixa, capacidade ou itens críticos para reposição automática.","warn"); buildPurchases(); buildUpgrades(); render();
+  }
+  function showHistory(){
+    const sim=(state.simulatedHistory||[]).map(r=>`<div class="history-item"><div class="label">${r.day} — Semana ${r.week}</div><div><b>Demanda histórica:</b> ${r.demand}</div><div class="tiny">Base simulada para análise de séries temporais.</div></div>`).join("");
+    const played=state.history.length?state.history.map(r=>`<div class="history-item"><div class="label">${r.day} — Semana ${r.week}</div><div><b>Previsão:</b> ${r.forecast??"—"}</div><div><b>Demanda real:</b> ${r.arrived}</div><div><b>Atendidos:</b> ${r.served}</div><div><b>Utilização:</b> ${r.utilization.toFixed(1)}%</div><div><b>Nível de serviço:</b> ${r.serviceLevel.toFixed(1)}%</div><div><b>Gargalo:</b> ${r.bottleneck}</div></div>`).join(""):``;
+    $("historyGrid").innerHTML=sim+played || `<div class="history-item">Nenhum histórico disponível.</div>`;
+    $("historyModal").classList.add("show");
+  }
+  function closeModals(){ $("reportModal").classList.remove("show"); $("historyModal").classList.remove("show") }
+  function log(msg,type=""){ const cls=type?`log-${type}`:""; state.logs.unshift({msg,cls,time:new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit",second:"2-digit"})}); state.logs=state.logs.slice(0,80) }
+  function render(){ renderHud(); renderCustomers(); renderDeliveryCustomers(); renderMachineDisplay(); updateMachineButtons(); renderTickets(); renderFryers(); renderReadyOrders(); renderStock(); renderLog(); }
+  function renderHud(){ $("cycleValue").textContent=`${DAY_SHORT[dayIndex()]} • S${weekNumber()}`; if($("planningDay")) $("planningDay").textContent=`${currentDayName()} — Semana ${weekNumber()}`; $("timerValue").textContent=`${String(Math.floor(state.remaining/60)).padStart(2,"0")}:${String(state.remaining%60).padStart(2,"0")}`; if($("startBtn")) $("startBtn").textContent=`▶ Iniciar ${currentDayName()}`; $("cashValue").textContent=fmtMoney(state.cash); $("satisfactionValue").textContent=`${Math.round(state.satisfaction)}/100`; $("employeesValue").textContent=`${state.employees}/4${state.trained?" ⭐":""}`; $("assistantValue").textContent=(state.deliveryAssistants||0)+"/2"; $("fryersValue").textContent=`${state.fryerCapacity} espaços`; $("servedValue").textContent=state.stats.served; $("lostValue").textContent=state.stats.lost; }
+  function customerHTML(c,showOrder=true,drop=false){ if(!c) return `<div class="tiny">Aguardando cliente...</div>`; const pct=patiencePct(c); const mood=pct<25?"😡":pct<50?"😟":c.mood; const pCls=pct<25?"bad":pct<50?"warn":""; return `<div class="customer ${drop?"dropzone":""}" data-customer-id="${c.id}">${showOrder?`<div class="bubble">#${pad(c.orderNo)}<br>${orderText(c.order)}</div>`:`<div class="bubble">#${pad(c.orderNo)}<br>${c.color.toUpperCase()}</div>`}<div class="sprite"><div class="hair"></div><div class="head"></div><div class="body shirt-${c.color}"></div><div class="legs"></div></div><div class="mood">${mood}</div><div class="customer-name">${c.color}</div><div class="patience ${pCls}"><span style="height:${pct}%"></span></div></div>` }
+  function patiencePct(c){ return clamp(100-((Date.now()-c.bornAt)/1000)/c.patience*100,0,100) }
+  function renderCustomers(){ $("activeCustomer").innerHTML=customerHTML(state.activeCustomer,true,false); $("customerQueue").innerHTML=state.customerQueue.map(c=>customerHTML(c,true,false)).join("")||`<div class="tiny">Sem fila no momento.</div>` }
+  function renderDeliveryCustomers(){
+    $("deliveryCustomers").innerHTML=state.deliveryCustomers.map(c=>customerHTML(c,false,true)).join("")||`<div class="tiny">Nenhum cliente aguardando entrega.</div>`;
+    document.querySelectorAll("#deliveryCustomers .customer").forEach(el=>{
+      el.addEventListener("click",()=>{ if(selectedReadyId) deliver(selectedReadyId,Number(el.dataset.customerId),false); else log("Clique primeiro em uma bandeja pronta e depois no cliente correto.","warn") });
+      el.addEventListener("dragover",ev=>{ ev.preventDefault(); el.classList.add("drag-hover"); });
+      el.addEventListener("dragleave",()=>el.classList.remove("drag-hover"));
+      el.addEventListener("drop",ev=>{ ev.preventDefault(); el.classList.remove("drag-hover"); const tid=Number(ev.dataTransfer.getData("text/plain")||selectedReadyId); if(tid) deliver(tid,Number(el.dataset.customerId),false); });
+    });
+  }
+  function renderMachineDisplay(){ const c=state.activeCustomer; const p=selectedPastel?PASTELS[selectedPastel].label:"—"; const d=selectedDrink?" + Suco/Refrigerante":""; $("machineDisplay").innerHTML=c?`Cliente ${c.color} — pedido #${pad(c.orderNo)}<br>Balão: <b>${orderText(c.order)}</b><br>Digitado: <b>${p}${d}</b>`:`Sem cliente no balcão.<br>Digitado: <b>${p}${d}</b>` }
+  function updateMachineButtons(){ [["btnCarne","carne"],["btnFrango","frango"],["btnQueijo","queijo"]].forEach(([id,p])=>$(id).classList.toggle("btn-selected",selectedPastel===p)); $("btnDrink").classList.toggle("btn-selected",selectedDrink); $("btnDrink").textContent=selectedDrink?"✓ Suco/Refrigerante":"+ Suco/Refrigerante" }
+  function renderTickets(){
+    const now=Date.now(); $("ticketQueue").innerHTML=state.ticketQueue.map(t=>{ const w=Math.round((now-t.createdAt)/1000); const cls=w>70?"wait-bad":w>40?"wait-warn":""; return `<div class="ticket ${cls}"><span class="order-no">#${pad(t.orderNo)}</span><br><b>${orderText(t.order)}</b><br>Cliente: ${t.customerColor}<br><span class="tiny">Aguardando ${w}s</span><button onclick="window.__pastelaria.startFrying(${t.id})">Fritar este</button></div>` }).join("")||`<div class="tiny">Nenhuma comanda em espera.</div>`;
+  }
+  function renderFryers(){
+    const now=Date.now();
+    const slots=state.fryerSlots.map((t,i)=>{ if(!t) return `<div class="slot">espaço ${i+1}<br>vazio</div>`; const elapsed=(now-t.startedAt)/1000, pct=clamp((elapsed/t.duration)*100,0,100), left=Math.max(0,Math.ceil(t.duration-elapsed)); return `<div class="slot ${pct>=100?"ready":""}"><div>#${pad(t.orderNo)}<br>${PASTELS[t.order.pastel].label}<br>${left}s</div><div class="progress" style="height:${pct}%"></div></div>` }).join("");
+    $("fryerArea").innerHTML=`<div class="fryer"><h3>Fritadeira — ${state.fryerCapacity} espaços</h3><div class="slots">${slots}</div></div>`;
+  }
+  function renderReadyOrders(){
+    $("readyOrders").innerHTML=state.readyOrders.map(t=>`<div class="ready-order ${selectedReadyId===t.id?"selected":""} ${t.assistantPlanned?"auto":""}" data-ticket-id="${t.id}" draggable="true"><span class="order-no">#${pad(t.orderNo)}</span><br><b>${orderText(t.order)}</b><br>Para: ${t.customerColor}<br>${selectedReadyId===t.id?`<span class="tag good">Selecionado</span>`:(t.assistantPlanned?`<span class="tag good">Auxiliar</span>`:`<span class="tag warn">Clique ou arraste</span>`)}</div>`).join("")||`<div class="tiny">Nenhuma bandeja pronta.</div>`;
+    if($("deliverySelectionHint")) $("deliverySelectionHint").textContent = selectedReadyId ? `Bandeja #${pad((state.readyOrders.find(t=>t.id===selectedReadyId)||{}).orderNo||0)} selecionada. Agora clique no cliente correto ou arraste a bandeja até ele.` : "Nenhuma bandeja selecionada. Clique no pedido pronto ou arraste a bandeja para o cliente.";
+    document.querySelectorAll(".ready-order").forEach(el=>{
+      el.addEventListener("click",()=>{ const id=Number(el.dataset.ticketId); selectedReadyId=selectedReadyId===id?null:id; render() });
+      el.addEventListener("dragstart",ev=>{ ev.dataTransfer.setData("text/plain", el.dataset.ticketId); ev.dataTransfer.effectAllowed="move"; selectedReadyId=Number(el.dataset.ticketId); });
+    });
+  }
+  function renderStock(){
+    const data=Object.keys(state.stock);
+    $("stockGrid").innerHTML=data.map(k=>{
+      const total=state.stock[k]||0, cap=state.capacity[k]||1, reserved=(state.reserved&&state.reserved[k])||0, available=Math.max(0,total-reserved), free=Math.max(0,cap-total);
+      const pct=available/cap, cls=pct<=.2?"low":pct<=.4?"warn":"";
+      const avW=Math.max(0,available/cap*100), resW=Math.max(0,reserved/cap*100), freeW=Math.max(0,free/cap*100);
+      return `<div class="stock-item ${cls}"><b>${STOCK_NAMES[k]}</b><div class="stock-numbers">Disponível: <b>${available}</b> | Reservado: <b>${reserved}</b><br>Total físico: <b>${total}/${cap}</b></div><div class="stockbar" title="verde: disponível; amarelo: reservado; cinza: espaço livre"><span class="bar-available" style="width:${avW}%"></span><span class="bar-reserved" style="width:${resW}%"></span><span class="bar-free" style="width:${freeW}%"></span></div><div class="stock-legend">🟩 disponível · 🟨 reservado · ⬛ espaço livre</div></div>`
+    }).join("")
+  }
+  function renderLog(){ $("logBox").innerHTML=state.logs.map(l=>`<div class="log-line ${l.cls}">[${l.time}] ${l.msg}</div>`).join("") }
+  function orderText(o){ return `${PASTELS[o.pastel].label}${o.drink?" + Refri":""}` }
+  function pad(n){ return String(n).padStart(3,"0") }
+
+  $("startBtn").addEventListener("click",startCycle); $("endBtn").addEventListener("click",endCycle); $("historyBtn").addEventListener("click",showHistory); $("closeHistoryBtn").addEventListener("click",()=>$("historyModal").classList.remove("show")); $("closeReportBtn").addEventListener("click",()=>$("reportModal").classList.remove("show")); $("printReportBtn").addEventListener("click",printReport); $("nextCycleBtn").addEventListener("click",()=>{ $("reportModal").classList.remove("show"); }); $("btnCarne").addEventListener("click",()=>selectPastel("carne")); $("btnFrango").addEventListener("click",()=>selectPastel("frango")); $("btnQueijo").addEventListener("click",()=>selectPastel("queijo")); $("btnDrink").addEventListener("click",toggleDrink); $("btnClear").addEventListener("click",clearMachine); $("btnReject").addEventListener("click",rejectOrder); $("btnFinalize").addEventListener("click",finalizeOrder);
+  $("shopNameInput").addEventListener("input",e=>setShopName(e.target.value)); $("pastelPriceInput").addEventListener("input",e=>setPastelPrice(e.target.value)); $("drinkPriceInput").addEventListener("input",e=>setDrinkPrice(e.target.value)); $("performanceFocusInput").addEventListener("change",e=>setPerformanceFocus(e.target.value));
+  window.__pastelaria={startFrying,buyStock,updateBuyPreview,buyFryer,hireEmployee,hireDeliveryAssistant,trainTeam,expandStorage,advertise,buySuggested,setPastelPrice,setDrinkPrice,setShopName,setPerformanceFocus,rejectOrder,loadContinuationCode};
+  $("newGameBtn").addEventListener("click",()=>{ resetGame(); $("startModal").classList.remove("show"); });
+  $("loadGameBtn").addEventListener("click",loadContinuationCode);
+  document.addEventListener("click",e=>{ if(e.target && e.target.id==="downloadCodeCsvBtn"){ e.preventDefault(); downloadContinuationCSV(); } });
+  resetGame();
+  $("startModal").classList.add("show");
+})();
+</script>
+</body>
+</html>
