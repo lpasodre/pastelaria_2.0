@@ -6,38 +6,38 @@
   <title>Pastelaria em Operação — Simulador de Gestão</title>
   <style>
     :root{
-      --bg:#eaf4ff; --panel:#f8fbff; --panel2:#e2effc; --panel3:#d4e7f7;
-      --ink:#16324f; --muted:#52708c; --line:#87acd0; --dark:#173b5e;
+      --bg:#0f2740; --panel:#274867; --panel2:#dce8f3; --panel3:#bdd0e2;
+      --ink:#f4f8fc; --muted:#c3d2df; --line:#6285a4; --dark:#091a2b;
       --accent:#ffcc4d; --good:#6ee487; --bad:#ff6b6b; --warn:#ffb347; --blue:#70bbff;
       --purple:#a777ff; --cyan:#77f1ff;
     }
     *{box-sizing:border-box}
     body{
       margin:0; color:var(--ink); font-family:"Courier New", monospace;
-      background:radial-gradient(circle at top,#f8fcff 0,#dceeff 48%,#bcd8f1 100%);
+      background:radial-gradient(circle at top,#234a6b 0,#173754 48%,#0f2740 100%);
       min-height:100vh;
     }
     .screen{max-width:1640px;margin:0 auto;padding:12px}
     .titlebar{
       display:flex;justify-content:space-between;align-items:center;gap:12px;
       padding:12px 14px;margin-bottom:12px;border:4px solid var(--dark);border-radius:10px;
-      background:linear-gradient(#ffe17a,#eda331);box-shadow:0 6px 0 var(--dark);color:#261506;
+      background:linear-gradient(#2f5e86,#234867);box-shadow:0 6px 0 var(--dark);color:#fff;
     }
-    h1{margin:0;font-size:clamp(18px,2.6vw,32px);text-shadow:1px 1px #fff3b0;letter-spacing:.4px}
+    h1{margin:0;font-size:clamp(18px,2.6vw,32px);text-shadow:1px 1px #0b1724;letter-spacing:.4px}
     .subtitle{font-size:12px;max-width:640px;text-align:right;opacity:.92}
     .hud{display:grid;grid-template-columns:repeat(9,minmax(96px,1fr));gap:8px;margin-bottom:12px}
     .card,.panel,.modal{background:var(--panel);border:3px solid var(--dark);box-shadow:0 4px 0 var(--dark);border-radius:10px}
     .card{padding:8px 10px;min-height:56px}
     .label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.2px}
     .value{font-weight:bold;font-size:17px;margin-top:4px;white-space:nowrap}
-    .cash-card{background:linear-gradient(#dff6e6,#bde8ca)}
+    .cash-card{background:linear-gradient(#315f55,#23483f);color:#fff}
     .op-layout{display:flex;flex-direction:column;gap:12px}
     .top-row{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(270px,.8fr);gap:12px;align-items:stretch}
     .bottom-row{display:grid;grid-template-columns:minmax(0,.92fr) minmax(0,1.15fr);gap:12px;align-items:stretch}
     .panel{padding:12px;min-width:0}
-    .panel h2{margin:0 0 8px 0;color:var(--dark);font-size:16px;padding-bottom:6px;border-bottom:2px dashed var(--line)}
+    .panel h2{margin:0 0 8px 0;color:#fff;font-size:16px;padding-bottom:6px;border-bottom:2px dashed var(--line)}
     .tiny{font-size:11px;color:var(--muted);line-height:1.35}
-    .hint{font-size:11px;color:#294763;margin:4px 0 8px 0}
+    .hint{font-size:11px;color:#d6e4ef;margin:4px 0 8px 0}
     button{
       font-family:"Courier New", monospace;cursor:pointer;border:3px solid var(--dark);background:#f6f4e7;color:#172033;
       border-radius:9px;padding:8px 9px;box-shadow:0 3px 0 var(--dark);font-weight:bold;transition:transform .05s ease,filter .1s ease;user-select:none;
@@ -45,7 +45,7 @@
     button:hover{filter:brightness(1.07)} button:active{transform:translateY(2px);box-shadow:0 1px 0 var(--dark)}
     button:disabled{opacity:.45;cursor:not-allowed;filter:grayscale(.6)}
     .btn-row{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}.btn-row button{flex:1 1 118px}
-    .btn-primary{background:var(--good);color:#061f0c}.btn-danger{background:var(--bad);color:#310606}.btn-warn{background:var(--accent);color:#2b1d00}.btn-blue{background:var(--blue);color:#061927}.btn-purple{background:var(--purple);color:#fff}.btn-selected{outline:4px solid #fff;background:var(--purple);color:#fff}
+    .fry-btn{margin-top:7px;width:100%;font-weight:bold;background:#ffd95a;color:#2b1d00}.fry-btn:disabled{background:#d6dbe2;color:#667789;cursor:not-allowed;box-shadow:none;transform:none}.btn-primary{background:var(--good);color:#061f0c}.btn-danger{background:var(--bad);color:#310606}.btn-warn{background:var(--accent);color:#2b1d00}.btn-blue{background:var(--blue);color:#061927}.btn-purple{background:var(--purple);color:#fff}.btn-selected{outline:4px solid #fff;background:var(--purple);color:#fff}
     .customers-wrap{display:grid;grid-template-columns:230px 1fr;gap:10px;align-items:start}
     .customer-line,.delivery-line,.ready-list,.ticket-list{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start;min-height:92px}
     .queue-strip{min-height:128px;padding:8px;border:2px dashed rgba(255,255,255,.18);border-radius:8px;background:rgba(0,0,0,.11)}
@@ -60,14 +60,14 @@
     .machine{background:#1b2232;border:3px solid var(--dark);padding:10px;border-radius:10px}.machine-display{background:#101824;border:3px inset #3d5878;min-height:64px;padding:8px;color:#bdf7ff;margin-bottom:8px;font-size:13px;line-height:1.3}
     .counter-grid{display:grid;grid-template-columns:1.05fr 1fr;gap:10px}.counter-box{background:rgba(0,0,0,.14);border:2px dashed rgba(255,255,255,.18);border-radius:8px;padding:8px;min-height:162px}.counter-box h3{margin:0 0 6px;color:#fff;font-size:13px}
     .ticket,.ready-order{background:#fff7d7;color:#241707;border:3px solid var(--dark);border-radius:8px;box-shadow:0 3px 0 var(--dark);padding:8px;min-width:132px;max-width:190px;font-size:12px;position:relative}.ticket button{margin-top:6px;width:100%;padding:6px}.ticket.wait-warn{background:#ffe1a3}.ticket.wait-bad{background:#ffb7b7}.order-no{display:inline-block;background:#101824;color:#fff;border:2px solid var(--dark);border-radius:7px;padding:2px 5px;margin-bottom:4px}.ready-order{cursor:pointer;background:#d7fff0}.ready-order.selected{outline:4px solid #fff}.ready-order.auto{background:#dff2ff}.tag{display:inline-block;border:2px solid var(--dark);border-radius:999px;padding:2px 6px;font-size:10px;background:#fff;color:#111;margin-top:4px}.tag.warn{background:#fff1ad}.tag.good{background:#baf7ca}.tag.bad{background:#ffb5b5}
-    .production-grid{display:grid;grid-template-columns:minmax(230px,.9fr) minmax(280px,1.1fr);gap:10px}.fryer{background:#fff8d8;border:3px solid var(--dark);border-radius:9px;padding:8px;margin-bottom:8px}.fryer h3{margin:0 0 7px 0;color:#8a5b00;font-size:13px}.slots{display:grid;grid-template-columns:repeat(auto-fit,minmax(62px,1fr));gap:10px;align-items:end}.slot{position:relative;min-height:150px;max-width:90px;margin:auto;background:#fff9dc;border:3px solid #8a5b00;border-radius:45% 45% 42% 42% / 18% 18% 14% 14%;display:flex;align-items:center;justify-content:center;text-align:center;overflow:hidden;font-size:11px;color:#5a4300;box-shadow:inset 0 0 0 4px #f6d36a}.slot .progress{position:absolute;left:0;bottom:0;width:100%;height:0;background:linear-gradient(#ffe56f,#e5a91c);opacity:.78}.slot>div:first-child{position:relative;z-index:2;font-weight:bold}.slot.ready{background:#244b31;animation:pulse .65s infinite alternate}@keyframes pulse{from{filter:brightness(1)}to{filter:brightness(1.35)}}
-    .management-row{display:grid;grid-template-columns:1.1fr 1fr 1fr;gap:12px;margin-top:12px}.stock-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.stock-item{background:var(--panel2);border:2px solid var(--dark);border-radius:8px;padding:8px;text-align:left}.stock-item.low{background:#5d2b2f}.stock-item.warn{background:#5f4a24}.stock-cap{font-size:10px;color:var(--muted)}.stockbar{display:flex;height:13px;border:2px solid var(--dark);border-radius:7px;overflow:hidden;background:#192234;margin:6px 0}.bar-available{background:var(--good)}.bar-reserved{background:var(--accent)}.bar-free{background:#5b6475}.stock-legend{font-size:9px;line-height:1.35;color:#294763}.stock-numbers{font-size:11px;line-height:1.35}.log-box{height:160px;overflow:auto;background:#101824;border:2px inset #3d5878;border-radius:7px;padding:8px;font-size:11px}.log-line{margin-bottom:5px}.log-good{color:var(--good)}.log-bad{color:var(--bad)}.log-warn{color:var(--warn)}
-    .modal-wrap{position:fixed;inset:0;background:rgba(0,0,0,.72);display:none;align-items:flex-start;justify-content:center;padding:18px;z-index:20;overflow:auto}.modal-wrap.show{display:flex}.modal{width:min(1200px,96vw);padding:16px;background:#253550}.modal h2{margin:0 0 10px;color:#dceeff}.report-grid,.upgrade-grid,.history-grid,.stock-buy-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.report-item,.upgrade,.history-item,.buy-card{background:var(--panel2);border:2px solid var(--dark);border-radius:8px;padding:10px}.report-item .value{font-size:16px}.diagnostic{line-height:1.45;font-size:13px}.cash-banner{margin:10px 0 12px;padding:12px;border:3px solid var(--dark);border-radius:10px;background:linear-gradient(90deg,#1f5835,#2e7d4c);font-size:22px;font-weight:bold;text-align:center;box-shadow:0 3px 0 var(--dark)}.buy-card h3,.upgrade h3{margin:0 0 5px;color:var(--ink);font-size:14px}.buy-card p,.upgrade p{margin:0 0 8px;color:#294763;font-size:11px;line-height:1.3}.buy-controls{display:grid;grid-template-columns:1fr 1fr;gap:6px}.buy-controls input{width:100%;font-family:"Courier New",monospace;padding:7px;border:2px solid var(--dark);border-radius:7px}.cost-preview{margin-top:7px;padding:7px;border:2px dashed rgba(255,255,255,.25);border-radius:7px;background:rgba(0,0,0,.16);font-size:11px;line-height:1.35}.print-area{display:none}.priority-high{border-color:#ff6b6b;background:#513545}.priority-medium{border-color:#ffcc4d}.priority-low{opacity:.88}.hidden{display:none!important}.footer-note{margin-top:10px;text-align:center;color:var(--muted);font-size:11px}
+    .production-grid{display:grid;grid-template-columns:minmax(230px,.9fr) minmax(280px,1.1fr);gap:10px}.fryer{background:#fff8d8;border:3px solid var(--dark);border-radius:9px;padding:8px;margin-bottom:8px}.fryer h3{margin:0 0 7px 0;color:#8a5b00;font-size:13px}.slots{display:grid;grid-template-columns:repeat(auto-fit,minmax(92px,1fr));gap:10px;align-items:start}.slot{position:relative;width:96px;height:96px;margin:auto;background:#fff9dc;border:3px solid #8a5b00;border-radius:10px;display:flex;align-items:center;justify-content:center;text-align:center;overflow:hidden;font-size:11px;color:#5a4300;box-shadow:inset 0 0 0 4px #f6d36a}.slot .progress{position:absolute;left:0;bottom:0;width:100%;height:0;background:linear-gradient(#ffe56f,#e5a91c);opacity:.78}.slot>div:first-child{position:relative;z-index:2;font-weight:bold}.slot.ready{background:#244b31;animation:pulse .65s infinite alternate}@keyframes pulse{from{filter:brightness(1)}to{filter:brightness(1.35)}}
+    .management-row{display:grid;grid-template-columns:1.1fr 1fr 1fr;gap:12px;margin-top:12px}.stock-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.stock-item{background:#dce8f3;color:#17324b;border:2px solid var(--dark);border-radius:8px;padding:8px;text-align:left}.stock-item.low{background:#5d2b2f}.stock-item.warn{background:#5f4a24}.stock-cap{font-size:10px;color:#4b667d}.stockbar{display:flex;height:13px;border:2px solid var(--dark);border-radius:7px;overflow:hidden;background:#192234;margin:6px 0}.bar-available{background:var(--good)}.bar-reserved{background:var(--accent)}.bar-free{background:#5b6475}.stock-legend{font-size:9px;line-height:1.35;color:#294763}.stock-numbers{font-size:11px;line-height:1.35}.log-box{height:160px;overflow:auto;background:#101824;border:2px inset #3d5878;border-radius:7px;padding:8px;font-size:11px}.log-line{margin-bottom:5px}.log-good{color:var(--good)}.log-bad{color:var(--bad)}.log-warn{color:var(--warn)}
+    .modal-wrap{position:fixed;inset:0;background:rgba(0,0,0,.72);display:none;align-items:flex-start;justify-content:center;padding:18px;z-index:20;overflow:auto}.modal-wrap.show{display:flex}.modal{width:min(1200px,96vw);padding:16px;background:#1d3a56;color:#f4f8fc}.modal h2{margin:0 0 10px;color:#dceeff}.report-grid,.upgrade-grid,.history-grid,.stock-buy-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.report-item,.upgrade,.history-item,.buy-card{background:#dce8f3;color:#17324b;border:2px solid var(--dark);border-radius:8px;padding:10px}.report-item .value{font-size:16px}.diagnostic{line-height:1.45;font-size:13px}.cash-banner{margin:10px 0 12px;padding:12px;border:3px solid var(--dark);border-radius:10px;background:linear-gradient(90deg,#1f5835,#2e7d4c);font-size:22px;font-weight:bold;text-align:center;box-shadow:0 3px 0 var(--dark)}.buy-card h3,.upgrade h3{margin:0 0 5px;color:#17324b;font-size:14px}.buy-card p,.upgrade p{margin:0 0 8px;color:#35536d;font-size:11px;line-height:1.3}.buy-controls{display:grid;grid-template-columns:1fr 1fr;gap:6px}.buy-controls input{width:100%;font-family:"Courier New",monospace;padding:7px;border:2px solid var(--dark);border-radius:7px}.cost-preview{margin-top:7px;padding:7px;border:2px dashed rgba(255,255,255,.25);border-radius:7px;background:rgba(0,0,0,.16);font-size:11px;line-height:1.35}.print-area{display:none}.priority-high{border-color:#ff6b6b;background:#513545}.priority-medium{border-color:#ffcc4d}.priority-low{opacity:.88}.hidden{display:none!important}.footer-note{margin-top:10px;text-align:center;color:var(--muted);font-size:11px}
 
     .config-bar{display:grid;grid-template-columns:1.2fr .65fr .75fr 1fr 1.6fr;gap:10px;align-items:end;margin-bottom:12px;padding:12px}
-    .field label{display:block;font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:4px}
+    .field label{display:block;font-size:10px;color:#d1dfeb;text-transform:uppercase;margin-bottom:4px}
     .field input,.field select{width:100%;font-family:"Courier New",monospace;border:3px solid var(--dark);border-radius:8px;padding:8px;background:#fff;color:#111;font-weight:bold}
-    .price-effect{background:#e7f1fb;border:2px dashed var(--line);border-radius:8px;padding:8px;font-size:11px;color:#294763;line-height:1.35}
+    .price-effect{background:#dfeaf4;border:2px dashed var(--line);border-radius:8px;padding:8px;font-size:11px;color:#294763;line-height:1.35}
     @media(max-width:1180px){.hud{grid-template-columns:repeat(3,1fr)}.management-row{grid-template-columns:1fr}.report-grid,.upgrade-grid,.history-grid,.stock-buy-grid{grid-template-columns:repeat(2,1fr)}.subtitle{display:none}}
     @media(max-width:760px){.top-row,.bottom-row,.production-grid,.counter-grid,.customers-wrap,.config-bar{grid-template-columns:1fr}}
     @media(max-width:620px){.hud{grid-template-columns:repeat(2,1fr)}.report-grid,.upgrade-grid,.history-grid,.stock-buy-grid,.stock-grid{grid-template-columns:1fr}.btn-row button{flex-basis:100%}.customer{width:88px}.screen{padding:8px}}
@@ -290,17 +290,14 @@
   function weekNumber(){ return Math.floor((Math.max(1,state.cycle)-1)/7)+1; }
   function currentDayName(){ return DAYS[dayIndex()]; }
   function generatePriorHistory(){
-    const weeks=[];
-    const trend=0.96 + Math.random()*.06;
-    for(let w=0;w<3;w++){
-      const weekScale=(0.92+w*.035)*(0.96+Math.random()*.08);
-      DAYS.forEach((d,i)=>{
-        const noise=0.92+Math.random()*.16;
-        const demand=Math.max(8,Math.round(BASE_WEEK_DEMAND*DAY_INDEX[i]*weekScale*noise*trend));
-        weeks.push({simulated:true,week:w-2,dayIndex:i,day:d,arrived:demand,demand:demand,event:"Histórico simulado"});
-      });
-    }
-    return weeks;
+    const history=[];
+    const weekScale=0.96+Math.random()*.08;
+    DAYS.forEach((d,i)=>{
+      const noise=0.92+Math.random()*.16;
+      const demand=Math.max(8,Math.round(BASE_WEEK_DEMAND*DAY_INDEX[i]*weekScale*noise));
+      history.push({simulated:true,week:0,dayIndex:i,day:d,arrived:demand,demand:demand,event:"Histórico simulado — Semana 0"});
+    });
+    return history;
   }
   function flavorTrend(){
     const i=dayIndex();
@@ -427,9 +424,12 @@
   function reserveOrder(order){ const req=orderRequirements(order); Object.keys(req).forEach(k=>state.reserved[k]=(state.reserved[k]||0)+req[k]) }
   function releaseOrder(order){ const req=orderRequirements(order); Object.keys(req).forEach(k=>state.reserved[k]=Math.max(0,(state.reserved[k]||0)-req[k])) }
   function startFrying(ticketId){
-    if(!state.running) return;
-    const free=state.fryerSlots.findIndex(s=>s===null); if(free<0){log("Fritadeira cheia. A comanda ficará aguardando.","warn"); return}
-    const idx=state.ticketQueue.findIndex(t=>t.id===ticketId); if(idx<0) return;
+    if(!state.running){ log("Inicie o dia antes de colocar pedidos para fritar.","warn"); render(); return; }
+    const id=Number(ticketId);
+    const idx=state.ticketQueue.findIndex(t=>t.id===id);
+    if(idx<0){ render(); return; }
+    const free=state.fryerSlots.findIndex(s=>s===null);
+    if(free<0){ log("Fritadeira cheia. A comanda ficará aguardando a liberação de um espaço.","warn"); render(); return; }
     const ticket=state.ticketQueue[idx]; const missing=reservationProblem(ticket.order);
     if(missing){state.satisfaction=clamp(state.satisfaction-3,0,100); log(`Não foi possível iniciar a comanda #${pad(ticket.orderNo)}: reserva insuficiente de ${STOCK_NAMES[missing].toLowerCase()}.`,"bad"); return}
     state.ticketQueue.splice(idx,1);
@@ -618,7 +618,7 @@
       state=loaded;
       state.running=false; state.remaining=CYCLE_SECONDS;
       state.activeCustomer=null; state.customerQueue=[]; state.deliveryCustomers=[]; state.ticketQueue=[]; state.readyOrders=[]; state.reserved=zeroStock();
-      state.stock=state.stock||copy(INITIAL_CAPACITY); state.capacity=state.capacity||copy(INITIAL_CAPACITY); state.history=state.history||[]; state.simulatedHistory=state.simulatedHistory||generatePriorHistory(); state.weekScale=state.weekScale||(.92+Math.random()*.16); state.eventSpeedFactor=1; state.logs=state.logs||[]; state.stats=state.stats||freshStats();
+      state.stock=state.stock||copy(INITIAL_CAPACITY); state.capacity=state.capacity||copy(INITIAL_CAPACITY); state.history=state.history||[]; if(!state.simulatedHistory || state.simulatedHistory.length!==7 || state.simulatedHistory.some(r=>r.week!==0)) state.simulatedHistory=generatePriorHistory(); state.weekScale=state.weekScale||(.92+Math.random()*.16); state.eventSpeedFactor=1; state.logs=state.logs||[]; state.stats=state.stats||freshStats();
       state.drinkPrice=normalizeDrinkPrice((state.drinkPrice ?? 6)); state.pastelPrice=normalizePrice((state.pastelPrice ?? 10));
       syncPastelPrices(); setupFryers(); updatePriceTexts(); closeModals(); $("startModal").classList.remove("show");
       if($("shopNameInput")) $("shopNameInput").value=state.shopName||"Pastelaria do Vale";
@@ -766,7 +766,7 @@
   function renderMachineDisplay(){ const c=state.activeCustomer; const p=selectedPastel?PASTELS[selectedPastel].label:"—"; const d=selectedDrink?" + Suco/Refrigerante":""; $("machineDisplay").innerHTML=c?`Cliente ${c.color} — pedido #${pad(c.orderNo)}<br>Balão: <b>${orderText(c.order)}</b><br>Digitado: <b>${p}${d}</b>`:`Sem cliente no balcão.<br>Digitado: <b>${p}${d}</b>` }
   function updateMachineButtons(){ [["btnCarne","carne"],["btnFrango","frango"],["btnQueijo","queijo"]].forEach(([id,p])=>$(id).classList.toggle("btn-selected",selectedPastel===p)); $("btnDrink").classList.toggle("btn-selected",selectedDrink); $("btnDrink").textContent=selectedDrink?"✓ Suco/Refrigerante":"+ Suco/Refrigerante" }
   function renderTickets(){
-    const now=Date.now(); $("ticketQueue").innerHTML=state.ticketQueue.map(t=>{ const w=Math.round((now-t.createdAt)/1000); const cls=w>70?"wait-bad":w>40?"wait-warn":""; return `<div class="ticket ${cls}"><span class="order-no">#${pad(t.orderNo)}</span><br><b>${orderText(t.order)}</b><br>Cliente: ${t.customerColor}<br><span class="tiny">Aguardando ${w}s</span><button onclick="window.__pastelaria.startFrying(${t.id})">Fritar este</button></div>` }).join("")||`<div class="tiny">Nenhuma comanda em espera.</div>`;
+    const now=Date.now(); $("ticketQueue").innerHTML=state.ticketQueue.map(t=>{ const w=Math.round((now-t.createdAt)/1000); const cls=w>70?"wait-bad":w>40?"wait-warn":""; return `<div class="ticket ${cls}"><span class="order-no">#${pad(t.orderNo)}</span><br><b>${orderText(t.order)}</b><br>Cliente: ${t.customerColor}<br><span class="tiny">Aguardando ${w}s</span><button class="fry-btn" onpointerdown="event.preventDefault();window.__pastelaria.startFrying(${t.id})" ${state.fryerSlots.some(s=>s===null)?"":"disabled"}>${state.fryerSlots.some(s=>s===null)?"🔥 Fritar este":"Fritadeira cheia"}</button></div>` }).join("")||`<div class="tiny">Nenhuma comanda em espera.</div>`;
   }
   function renderFryers(){
     const now=Date.now();
@@ -806,3 +806,7 @@
 </script>
 </body>
 </html>
+
+<style>
+.card .label{color:#d1dfeb}.card .value{color:#fff}.cash-card .label,.cash-card .value{color:#fff}.report-item .label,.history-item .label{color:#4b667d}.report-item .value,.history-item .value{color:#17324b}.stock-item .label{color:#4b667d}.stock-item .value,.stock-item .stock-numbers{color:#17324b}.config-bar.panel{background:#274867}.panel .tiny{color:#c7d7e4}.planningPanel{}
+</style>
